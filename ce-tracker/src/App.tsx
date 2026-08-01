@@ -10,15 +10,27 @@ import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabReportsScreen from './screens/LabReportsScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
+import {
+  IconChien,
+  IconFrise,
+  IconHistorique,
+  IconLabo,
+  IconSaisie,
+} from './components/icons'
 
 type Tab = 'daily' | 'history' | 'timeline' | 'labs' | 'dog'
 
-const TABS: { id: Tab; label: string; title: string }[] = [
-  { id: 'daily', label: 'Saisie', title: 'Saisie quotidienne' },
-  { id: 'history', label: 'Historique', title: 'Historique' },
-  { id: 'timeline', label: 'Frise', title: 'Frise temporelle' },
-  { id: 'labs', label: 'Labo', title: 'Comptes rendus' },
-  { id: 'dog', label: 'Chien', title: 'Le chien' },
+const TABS: {
+  id: Tab
+  label: string
+  title: string
+  Icon: (props: { className?: string }) => React.ReactElement
+}[] = [
+  { id: 'daily', label: 'Saisie', title: 'Saisie quotidienne', Icon: IconSaisie },
+  { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
+  { id: 'timeline', label: 'Frise', title: 'Frise temporelle', Icon: IconFrise },
+  { id: 'labs', label: 'Labo', title: 'Comptes rendus', Icon: IconLabo },
+  { id: 'dog', label: 'Chien', title: 'Le chien', Icon: IconChien },
 ]
 
 /** Le lien vétérinaire est une URL du type /?share=<jeton>, lue avant toute authentification. */
@@ -131,10 +143,11 @@ export default function App() {
             type="button"
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
-            className={`py-3 text-xs font-semibold transition-colors ${
+            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ${
               tab === item.id ? 'text-brand-700' : 'text-slate-500'
             }`}
           >
+            <item.Icon />
             {item.label}
           </button>
         ))}
