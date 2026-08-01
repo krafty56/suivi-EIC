@@ -1,13 +1,42 @@
 @import 'tailwindcss';
 
+/* Palette « Bleu et sauge ».
+   0D1821 encre · 344966 bleu Yale · B4CDED bleu poudré · F0F4EF porcelaine · BFCC94 sauge
+   Le bleu Yale porte les actions et les états sélectionnés, la sauge signale ce qui est fait.
+   Les neutres ne sont pas des gris achromatiques : ce sont des transparences de l'encre, ce qui
+   les accorde au reste sans introduire de teinte étrangère. */
 @theme {
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
+  --color-brand-50: #bfcc94; /* sauge pleine : lignes cochées, encarts d'information */
+  --color-brand-100: #b4cded; /* bleu poudré : anneaux de focus, pastille de score */
+  --color-brand-200: #bfcc94; /* filets des lignes cochées et des boutons secondaires */
+  --color-brand-500: #4a6076;
+  --color-brand-600: #344966; /* bordure de champ actif, interrupteur enclenché */
+  --color-brand-700: #344966; /* actions, sélection, onglet courant */
+  --color-brand-800: #0d1821; /* survol des actions, texte des boutons secondaires */
+
+  --color-slate-50: #f0f4ef;
+  --color-slate-100: rgb(13 24 33 / 0.06);
+  --color-slate-200: rgb(13 24 33 / 0.11);
+  --color-slate-300: rgb(13 24 33 / 0.2);
+  --color-slate-400: rgb(13 24 33 / 0.42);
+  --color-slate-500: rgb(13 24 33 / 0.6);
+  --color-slate-600: rgb(13 24 33 / 0.68);
+  --color-slate-700: rgb(13 24 33 / 0.8);
+  --color-slate-800: rgb(13 24 33 / 0.9);
+  --color-slate-900: #0d1821;
+
+  /* Le rouge de la crise et l'ambre des vomissements portent un sens : ils restent
+     distincts de la palette, simplement assourdis pour ne pas la percer. */
+  --color-red-50: #f8ece9;
+  --color-red-100: #f0d8d3;
+  --color-red-200: #e4c0ba;
+  --color-red-300: #d3a29b;
+  --color-red-700: #a8443d;
+  --color-red-800: #8d3830;
+  --color-red-900: #702c26;
+
+  --color-amber-100: #f6e8ce;
+  --color-amber-800: #855520;
 }
 
 html,
@@ -17,8 +46,8 @@ body,
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #f0f4ef;
+  color: #0d1821;
   -webkit-tap-highlight-color: transparent;
 }
 

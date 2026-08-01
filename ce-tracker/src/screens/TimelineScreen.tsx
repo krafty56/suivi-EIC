@@ -116,7 +116,7 @@ export default function TimelineScreen({ dogId }: Props) {
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: -24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
                 <YAxis
                   yAxisId="score"
@@ -140,16 +140,16 @@ export default function TimelineScreen({ dogId }: Props) {
                     key={crise.id}
                     yAxisId="score"
                     x={formatShortDate(crise.date)}
-                    stroke="#dc2626"
+                    stroke="#c0524b"
                     strokeDasharray="4 2"
-                    label={{ value: 'crise', fontSize: 10, fill: '#dc2626', position: 'top' }}
+                    label={{ value: 'crise', fontSize: 10, fill: '#c0524b', position: 'top' }}
                   />
                 ))}
                 <Bar
                   yAxisId="compte"
                   dataKey="vomissements"
                   name="Vomissements"
-                  fill="#fbbf24"
+                  fill="#d9a45b"
                   barSize={8}
                 />
                 <Line
@@ -157,8 +157,8 @@ export default function TimelineScreen({ dogId }: Props) {
                   type="monotone"
                   dataKey="symptomes"
                   name="Symptômes"
-                  stroke="#a78bfa"
-                  strokeWidth={2}
+                  stroke="#b4cded"
+                  strokeWidth={2.75}
                   dot={false}
                   connectNulls={false}
                 />
@@ -167,7 +167,7 @@ export default function TimelineScreen({ dogId }: Props) {
                   type="monotone"
                   dataKey="score"
                   name="Score fécal"
-                  stroke="#0f766e"
+                  stroke="#344966"
                   strokeWidth={2}
                   dot={{ r: 2 }}
                   connectNulls={false}
