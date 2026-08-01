@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, SharedDossier } from '../lib/types'
+import type { Crise, DailyEntry, SharedDossier, SuiviEvent } from '../lib/types'
 import {
   APPETIT_OPTIONS,
   BCS_SCALE,
@@ -53,11 +53,20 @@ export default function SharedDossierScreen({ token }: Props) {
 
   if (!dossier) return <Spinner label="Ouverture du dossier…" />
 
-  const { dog, share, medications, entries, crises, lab_reports, weights, scores } = dossier
+  const { dog, share, medications, entries, crises, events, lab_reports, weights, scores } =
+    dossier
   const actifs = medications.filter((m) => m.actif)
-  const dates = [...new Set([...entries.map((e) => e.date), ...crises.map((c) => c.date)])].sort(
-    (a, b) => b.localeCompare(a),
-  )
+  const jourDe = (at: string) => {
+    const d = new Date(at)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+  }
+  const dates = [
+    ...new Set([
+      ...entries.map((e) => e.date),
+      ...crises.map((c) => c.date),
+      ...events.map((e) => jourDe(e.at)),
+    ]),
+  ].sort((a, b) => b.localeCompare(a))
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 print:max-w-none print:p-0">
@@ -216,6 +225,7 @@ export default function SharedDossierScreen({ token }: Props) {
                 date={date}
                 entry={entries.find((e) => e.date === date) ?? null}
                 crises={crises.filter((c) => c.date === date)}
+                events={events.filter((e) => jourDe(e.at) === date)}
               />
             ))}
           </div>
@@ -242,11 +252,15 @@ function Journee({
   date,
   entry,
   crises,
+  events,
 }: {
   date: string
   entry: DailyEntry | null
   crises: Crise[]
+  events: SuiviEvent[]
 }) {
+  const heure = (at: string) =>
+    new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   return (
     <div className="py-3 break-inside-avoid">
       <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
@@ -265,6 +279,18 @@ function Journee({
           {crise.note && <p className="text-sm text-red-900">{crise.note}</p>}
         </div>
       ))}
+
+      {events.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
+          {[...events].reverse().map((event) => (
+            <li key={event.id} className="tabular-nums">
+              {heure(event.at)} — <span className="tabular-nums">{event.nom}</span>
+              {event.intensite !== null && ` (${event.intensite})`}
+              {event.categorie && <span className="text-slate-500"> · {event.categorie}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {entry ? (
         <>

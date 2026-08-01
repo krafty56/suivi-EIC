@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry } from '../lib/types'
+import type { Crise, DailyEntry, SuiviEvent } from '../lib/types'
 import { APPETIT_OPTIONS, CHANGEMENT_OPTIONS, ENERGIE_OPTIONS, GRAVITE_OPTIONS } from '../data/catalogs'
 import { formatLongDate } from '../lib/date'
 import { Card, ErrorMessage, Spinner } from '../components/ui'
@@ -11,6 +11,13 @@ type Day = {
   date: string
   entry: DailyEntry | null
   crises: Crise[]
+  events: SuiviEvent[]
+}
+
+/** Jour local d'un horodatage. */
+function jourDe(at: string): string {
+  const d = new Date(at)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 }
 
 export default function HistoryScreen({ dogId }: Props) {
@@ -19,25 +26,33 @@ export default function HistoryScreen({ dogId }: Props) {
 
   useEffect(() => {
     async function load() {
-      const [entriesResult, crisesResult] = await Promise.all([
+      const [entriesResult, crisesResult, eventsResult] = await Promise.all([
         supabase
           .from('daily_entries')
           .select('*')
           .eq('dog_id', dogId)
           .order('date', { ascending: false }),
         supabase.from('crises').select('*').eq('dog_id', dogId).order('date', { ascending: false }),
+        supabase.from('events').select('*').eq('dog_id', dogId).order('at', { ascending: false }),
       ])
 
-      if (entriesResult.error || crisesResult.error) {
-        setError((entriesResult.error ?? crisesResult.error)!.message)
+      if (entriesResult.error || crisesResult.error || eventsResult.error) {
+        setError((entriesResult.error ?? crisesResult.error ?? eventsResult.error)!.message)
         return
       }
 
       const entries = entriesResult.data as DailyEntry[]
       const crises = crisesResult.data as Crise[]
+      const events = eventsResult.data as SuiviEvent[]
 
       // Une ligne par date, qu'elle porte une saisie quotidienne, une crise, ou les deux.
-      const dates = [...new Set([...entries.map((e) => e.date), ...crises.map((c) => c.date)])].sort(
+      const dates = [
+        ...new Set([
+          ...entries.map((e) => e.date),
+          ...crises.map((c) => c.date),
+          ...events.map((e) => jourDe(e.at)),
+        ]),
+      ].sort(
         (a, b) => b.localeCompare(a),
       )
 
@@ -46,6 +61,7 @@ export default function HistoryScreen({ dogId }: Props) {
           date,
           entry: entries.find((entry) => entry.date === date) ?? null,
           crises: crises.filter((crise) => crise.date === date),
+          events: events.filter((event) => jourDe(event.at) === date),
         })),
       )
     }
@@ -92,6 +108,15 @@ export default function HistoryScreen({ dogId }: Props) {
               {crise.note && <p className="mt-1 text-sm text-red-900">{crise.note}</p>}
             </div>
           ))}
+
+          {day.events.length > 0 && (
+            <p className="mt-2 text-sm text-slate-700">
+              {[...day.events]
+                .reverse()
+                .map((e) => `${e.nom}${e.intensite !== null ? ` ${e.intensite}` : ''}`)
+                .join(' · ')}
+            </p>
+          )}
 
           {day.entry ? (
             <>

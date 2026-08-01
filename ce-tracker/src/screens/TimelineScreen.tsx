@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry } from '../lib/types'
+import type { Crise, DailyEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
 import { Card, ErrorMessage, Spinner } from '../components/ui'
 
@@ -32,9 +32,32 @@ type Point = {
   symptomes: number | null
 }
 
-/** Toutes les dates de la fenêtre, y compris celles sans saisie : les trous restent visibles. */
-function buildSeries(entries: DailyEntry[], jours: number): Point[] {
+/** Jour local d'un horodatage, au format YYYY-MM-DD. */
+function jourDe(at: string): string {
+  const d = new Date(at)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+}
+
+/**
+ * Toutes les dates de la fenêtre, y compris celles sans saisie : les trous
+ * restent visibles. Les valeurs viennent du journal ; les anciennes journées,
+ * saisies avant le passage aux événements, sont lues sur daily_entries.
+ */
+function buildSeries(entries: DailyEntry[], events: SuiviEvent[], jours: number): Point[] {
   const parDate = new Map(entries.map((entry) => [entry.date, entry]))
+
+  const selles = new Map<string, number[]>()
+  const vomis = new Map<string, number>()
+  const symptomes = new Map<string, number>()
+  for (const event of events) {
+    const j = jourDe(event.at)
+    if (event.type === 'selle' && event.intensite !== null) {
+      selles.set(j, [...(selles.get(j) ?? []), event.intensite])
+    } else if (event.type === 'symptome') {
+      symptomes.set(j, (symptomes.get(j) ?? 0) + 1)
+      if (event.nom === 'Vomissement') vomis.set(j, (vomis.get(j) ?? 0) + 1)
+    }
+  }
   const points: Point[] = []
   const fin = new Date(todayISO())
 
@@ -43,12 +66,15 @@ function buildSeries(entries: DailyEntry[], jours: number): Point[] {
     jour.setDate(fin.getDate() - i)
     const iso = jour.toISOString().slice(0, 10)
     const entry = parDate.get(iso)
+    const duJour = selles.get(iso)
+    const journal = selles.has(iso) || vomis.has(iso) || symptomes.has(iso)
     points.push({
       date: iso,
       label: formatShortDate(iso),
-      score: entry?.score_fecal ?? null,
-      vomissements: entry ? entry.vomissements_count : null,
-      symptomes: entry ? entry.symptoms.length : null,
+      // Le pire score de la journée : c'est lui qui décrit l'état du chien.
+      score: duJour ? Math.max(...duJour) : (entry?.score_fecal ?? null),
+      vomissements: journal ? (vomis.get(iso) ?? 0) : entry ? entry.vomissements_count : null,
+      symptomes: journal ? (symptomes.get(iso) ?? 0) : entry ? entry.symptoms.length : null,
     })
   }
   return points
@@ -56,27 +82,33 @@ function buildSeries(entries: DailyEntry[], jours: number): Point[] {
 
 export default function TimelineScreen({ dogId }: Props) {
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
+  const [events, setEvents] = useState<SuiviEvent[]>([])
   const [crises, setCrises] = useState<Crise[]>([])
   const [jours, setJours] = useState(30)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
-      const [e, c] = await Promise.all([
+      const [e, c, ev] = await Promise.all([
         supabase.from('daily_entries').select('*').eq('dog_id', dogId).order('date'),
         supabase.from('crises').select('*').eq('dog_id', dogId).order('date'),
+        supabase.from('events').select('*').eq('dog_id', dogId).order('at'),
       ])
-      if (e.error || c.error) {
-        setError((e.error ?? c.error)!.message)
+      if (e.error || c.error || ev.error) {
+        setError((e.error ?? c.error ?? ev.error)!.message)
         return
       }
       setEntries(e.data as DailyEntry[])
       setCrises(c.data as Crise[])
+      setEvents(ev.data as SuiviEvent[])
     }
     void load()
   }, [dogId])
 
-  const points = useMemo(() => (entries ? buildSeries(entries, jours) : []), [entries, jours])
+  const points = useMemo(
+    () => (entries ? buildSeries(entries, events, jours) : []),
+    [entries, events, jours],
+  )
   const crisesVisibles = useMemo(() => {
     const dates = new Set(points.map((p) => p.date))
     return crises.filter((crise) => dates.has(crise.date))
@@ -181,7 +213,7 @@ export default function TimelineScreen({ dogId }: Props) {
       <Card>
         <p className="text-sm font-medium text-slate-700">Lecture</p>
         <ul className="mt-2 space-y-1 text-sm text-slate-600">
-          <li>Axe de gauche : score fécal, de 1 (très dur) à 7 (liquide).</li>
+          <li>Axe de gauche : score fécal, de 1 (très dur) à 7 (liquide). Le plus élevé de la journée.</li>
           <li>Axe de droite : nombre de vomissements et de symptômes signalés.</li>
           <li>Trait rouge vertical : crise signalée ce jour-là.</li>
           <li>Les interruptions de courbe correspondent aux jours sans saisie.</li>

@@ -125,7 +125,7 @@ export default function App() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        {tab === 'daily' && <DailyEntryScreen dogId={dog.id} dogName={dog.name} />}
+        {tab === 'daily' && <DailyEntryScreen dog={dog} onDogChange={setDog} />}
         {tab === 'history' && <HistoryHubScreen dogId={dog.id} />}
         {tab === 'timeline' && (
           <Suspense fallback={<Spinner label="Chargement de la frise…" />}>

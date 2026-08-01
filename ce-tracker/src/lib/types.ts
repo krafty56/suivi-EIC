@@ -1,3 +1,26 @@
+export type EventType = 'symptome' | 'selle' | 'repas'
+
+/** Une observation horodatée : c'est ce qui rend les comptages possibles. */
+export type SuiviEvent = {
+  id: string
+  dog_id: string
+  at: string
+  type: EventType
+  nom: string
+  categorie: string | null
+  /** 1 à 3 pour un symptôme coté, 1 à 7 pour le score fécal d'une selle. */
+  intensite: number | null
+  note: string | null
+}
+
+/** Un des deux raccourcis de l'écran d'accueil. */
+export type Raccourci = {
+  type: EventType
+  nom: string
+  categorie: string | null
+  echelle: boolean
+}
+
 export type Dog = {
   id: string
   owner_id: string
@@ -8,6 +31,7 @@ export type Dog = {
   poids_ideal: number | null
   bcs: number | null
   date_diagnostic: string | null
+  saisie_rapide: Raccourci[]
 }
 
 export type DogMedication = {
@@ -102,6 +126,7 @@ export type SharedDossier = {
   medications: DogMedication[]
   entries: DailyEntry[]
   crises: Crise[]
+  events: SuiviEvent[]
   lab_reports: LabReport[]
   weights: Weight[]
   scores: ClinicalScore[]
