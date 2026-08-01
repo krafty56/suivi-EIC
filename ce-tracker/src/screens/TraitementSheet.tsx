@@ -1,28 +1,89 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { DogMedication } from '../lib/types'
-import { horodatage } from '../lib/date'
+import type { DogMedication, SuiviEvent } from '../lib/types'
+import { datetimeLocalDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 type Props = {
   dogId: string
   date: string
   medications: DogMedication[]
+  evenement?: SuiviEvent
   onClose: () => void
   onSaved: () => void
 }
 
 /** Enregistre la prise d'un médicament à l'heure exacte, en plus de la
- * checklist du jour : c'est ce qui permettra un jour de compter les prises. */
-export default function TraitementSheet({ dogId, date, medications, onClose, onSaved }: Props) {
+ * checklist du jour : c'est ce qui permettra un jour de compter les prises.
+ * Sert aussi à corriger l'heure d'une prise déjà enregistrée. */
+export default function TraitementSheet({
+  dogId,
+  date,
+  medications,
+  evenement,
+  onClose,
+  onSaved,
+}: Props) {
+  const medicamentActuel = evenement
+    ? (medications.find((m) => m.id === evenement.dog_medication_id) ?? null)
+    : null
+  const maintenant = datetimeLocalDe(new Date().toISOString())
+
   const [choisi, setChoisi] = useState<DogMedication | null>(
-    medications.length === 1 ? medications[0] : null,
+    evenement ? medicamentActuel : medications.length === 1 ? medications[0] : null,
   )
-  const [hhmm, setHhmm] = useState(new Date().toTimeString().slice(0, 5))
+  const [quand, setQuand] = useState(
+    evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (medications.length === 0) {
+  async function enregistrer() {
+    setBusy(true)
+    setError(null)
+    const valeurs = {
+      dog_id: dogId,
+      at: isoDeDatetimeLocal(quand),
+      type: 'traitement' as const,
+      nom: choisi?.nom_medicament ?? evenement!.nom,
+      categorie: null,
+      intensite: null,
+      dog_medication_id: choisi?.id ?? evenement!.dog_medication_id,
+    }
+    const { error: dbError } = evenement
+      ? await supabase.from('events').update(valeurs).eq('id', evenement.id)
+      : await supabase.from('events').insert(valeurs)
+    setBusy(false)
+    if (dbError) setError(dbError.message)
+    else onSaved()
+  }
+
+  // Le médicament d'origine n'est plus actif : impossible de le reproposer
+  // dans la liste, et on évite de requalifier silencieusement une prise
+  // passée en la rattachant à un autre médicament. Seule l'heure se corrige.
+  if (evenement && !medicamentActuel) {
+    return (
+      <Sheet title={evenement.nom} onClose={onClose}>
+        <div className="space-y-5">
+          <Field label="Heure de prise">
+            <input
+              type="datetime-local"
+              value={quand}
+              max={maintenant}
+              onChange={(e) => setQuand(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <ErrorMessage>{error}</ErrorMessage>
+          <Button type="button" disabled={busy} className="w-full" onClick={() => void enregistrer()}>
+            {busy ? 'Enregistrement…' : 'Enregistrer les modifications'}
+          </Button>
+        </div>
+      </Sheet>
+    )
+  }
+
+  if (medications.length === 0 && !evenement) {
     return (
       <Sheet title="Traitement" onClose={onClose}>
         <p className="text-sm text-slate-500">
@@ -52,31 +113,15 @@ export default function TraitementSheet({ dogId, date, medications, onClose, onS
     )
   }
 
-  async function enregistrer() {
-    setBusy(true)
-    setError(null)
-    const { error: dbError } = await supabase.from('events').insert({
-      dog_id: dogId,
-      at: horodatage(date, hhmm),
-      type: 'traitement',
-      nom: choisi!.nom_medicament,
-      categorie: null,
-      intensite: null,
-      dog_medication_id: choisi!.id,
-    })
-    setBusy(false)
-    if (dbError) setError(dbError.message)
-    else onSaved()
-  }
-
   return (
     <Sheet title={choisi.nom_medicament} onClose={onClose}>
       <div className="space-y-5">
         <Field label="Heure de prise">
           <input
-            type="time"
-            value={hhmm}
-            onChange={(e) => setHhmm(e.target.value)}
+            type="datetime-local"
+            value={quand}
+            max={maintenant}
+            onChange={(e) => setQuand(e.target.value)}
             className={inputClass}
           />
         </Field>
@@ -84,7 +129,7 @@ export default function TraitementSheet({ dogId, date, medications, onClose, onS
         <ErrorMessage>{error}</ErrorMessage>
 
         <Button type="button" disabled={busy} className="w-full" onClick={() => void enregistrer()}>
-          {busy ? 'Enregistrement…' : 'Enregistrer la prise'}
+          {busy ? 'Enregistrement…' : evenement ? 'Enregistrer les modifications' : 'Enregistrer la prise'}
         </Button>
         {medications.length > 1 && (
           <Button
@@ -93,7 +138,7 @@ export default function TraitementSheet({ dogId, date, medications, onClose, onS
             className="w-full py-2.5 text-sm"
             onClick={() => setChoisi(null)}
           >
-            Retour à la liste
+            Changer
           </Button>
         )}
       </div>

@@ -1,20 +1,26 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { horodatage } from '../lib/date'
+import type { SuiviEvent } from '../lib/types'
+import { datetimeLocalDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 type Props = {
   dogId: string
   date: string
+  evenement?: SuiviEvent
   onClose: () => void
   onSaved: () => void
 }
 
 /** Une observation qui ne rentre dans aucun symptôme du catalogue : le
- * contexte du jour, un changement remarqué, une question pour le vétérinaire. */
-export default function NoteLibreSheet({ dogId, date, onClose, onSaved }: Props) {
-  const [texte, setTexte] = useState('')
-  const [hhmm, setHhmm] = useState(new Date().toTimeString().slice(0, 5))
+ * contexte du jour, un changement remarqué, une question pour le vétérinaire.
+ * Sert aussi à corriger une note déjà enregistrée. */
+export default function NoteLibreSheet({ dogId, date, evenement, onClose, onSaved }: Props) {
+  const maintenant = datetimeLocalDe(new Date().toISOString())
+  const [texte, setTexte] = useState(evenement?.note ?? '')
+  const [quand, setQuand] = useState(
+    evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -22,15 +28,18 @@ export default function NoteLibreSheet({ dogId, date, onClose, onSaved }: Props)
     if (!texte.trim()) return
     setBusy(true)
     setError(null)
-    const { error: dbError } = await supabase.from('events').insert({
+    const valeurs = {
       dog_id: dogId,
-      at: horodatage(date, hhmm),
-      type: 'note',
+      at: isoDeDatetimeLocal(quand),
+      type: 'note' as const,
       nom: 'Note libre',
       categorie: null,
       intensite: null,
       note: texte.trim(),
-    })
+    }
+    const { error: dbError } = evenement
+      ? await supabase.from('events').update(valeurs).eq('id', evenement.id)
+      : await supabase.from('events').insert(valeurs)
     setBusy(false)
     if (dbError) setError(dbError.message)
     else onSaved()
@@ -50,11 +59,12 @@ export default function NoteLibreSheet({ dogId, date, onClose, onSaved }: Props)
           />
         </Field>
 
-        <Field label="Heure">
+        <Field label="Quand ?">
           <input
-            type="time"
-            value={hhmm}
-            onChange={(e) => setHhmm(e.target.value)}
+            type="datetime-local"
+            value={quand}
+            max={maintenant}
+            onChange={(e) => setQuand(e.target.value)}
             className={inputClass}
           />
         </Field>
@@ -67,7 +77,7 @@ export default function NoteLibreSheet({ dogId, date, onClose, onSaved }: Props)
           className="w-full"
           onClick={() => void enregistrer()}
         >
-          {busy ? 'Enregistrement…' : 'Enregistrer la note'}
+          {busy ? 'Enregistrement…' : evenement ? 'Enregistrer les modifications' : 'Enregistrer la note'}
         </Button>
       </div>
     </Sheet>

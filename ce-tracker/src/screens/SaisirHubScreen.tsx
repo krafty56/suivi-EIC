@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Appetit, DailyEntry, Dog, DogMedication, Energie } from '../lib/types'
+import type { Appetit, DailyEntry, Dog, DogMedication, Energie, SuiviEvent } from '../lib/types'
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS } from '../data/catalogs'
 import { formatTime, todayISO } from '../lib/date'
 import {
@@ -21,7 +21,19 @@ import TraitementSheet from './TraitementSheet'
 
 type Props = { dog: Dog; onDogChange: (dog: Dog) => void }
 
-type SaisieAutre = 'traitement' | 'note' | 'activite' | 'poids' | null
+type SaisieAutre =
+  | { kind: 'traitement'; evenement?: SuiviEvent }
+  | { kind: 'note'; evenement?: SuiviEvent }
+  | { kind: 'activite'; evenement?: SuiviEvent }
+  | { kind: 'poids' }
+  | null
+
+const CARTES_AUTRES: { id: 'traitement' | 'activite' | 'note' | 'poids'; label: string }[] = [
+  { id: 'traitement', label: 'Traitement' },
+  { id: 'activite', label: 'Activité' },
+  { id: 'note', label: 'Note libre' },
+  { id: 'poids', label: 'Poids' },
+]
 
 export default function SaisirHubScreen({ dog, onDogChange }: Props) {
   const [date, setDate] = useState(todayISO())
@@ -96,6 +108,14 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
     void load()
   }, [load])
 
+  /** Un événement traitement/note/activité cliqué dans le journal : on ouvre
+   * la feuille qui sait le modifier, pré-remplie. */
+  function ouvrirEditionAutre(evenement: SuiviEvent) {
+    if (evenement.type === 'traitement') setSaisieAutre({ kind: 'traitement', evenement })
+    else if (evenement.type === 'note') setSaisieAutre({ kind: 'note', evenement })
+    else if (evenement.type === 'activite') setSaisieAutre({ kind: 'activite', evenement })
+  }
+
   function toggleMedication(id: string) {
     setTakenMeds((current) => {
       const next = new Set(current)
@@ -167,6 +187,7 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
           date={date}
           onDogChange={onDogChange}
           refreshSignal={refreshSignal}
+          onEditAutre={ouvrirEditionAutre}
         />
 
         <div>
@@ -174,18 +195,11 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
             Autres saisies
           </p>
           <div className="grid grid-cols-4 gap-2">
-            {(
-              [
-                { id: 'traitement', label: 'Traitement' },
-                { id: 'activite', label: 'Activité' },
-                { id: 'note', label: 'Note libre' },
-                { id: 'poids', label: 'Poids' },
-              ] as const
-            ).map((carte) => (
+            {CARTES_AUTRES.map((carte) => (
               <button
                 key={carte.id}
                 type="button"
-                onClick={() => setSaisieAutre(carte.id)}
+                onClick={() => setSaisieAutre({ kind: carte.id } as SaisieAutre)}
                 className="rounded-2xl bg-white px-2 py-4 text-center text-xs font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
               >
                 {carte.label}
@@ -293,11 +307,13 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         />
       )}
 
-      {saisieAutre === 'traitement' && (
+      {saisieAutre?.kind === 'traitement' && (
         <TraitementSheet
+          key={saisieAutre.evenement?.id ?? 'nouveau'}
           dogId={dog.id}
           date={date}
           medications={medications}
+          evenement={saisieAutre.evenement}
           onClose={() => setSaisieAutre(null)}
           onSaved={() => {
             setSaisieAutre(null)
@@ -306,10 +322,12 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         />
       )}
 
-      {saisieAutre === 'note' && (
+      {saisieAutre?.kind === 'note' && (
         <NoteLibreSheet
+          key={saisieAutre.evenement?.id ?? 'nouveau'}
           dogId={dog.id}
           date={date}
+          evenement={saisieAutre.evenement}
           onClose={() => setSaisieAutre(null)}
           onSaved={() => {
             setSaisieAutre(null)
@@ -318,10 +336,12 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         />
       )}
 
-      {saisieAutre === 'activite' && (
+      {saisieAutre?.kind === 'activite' && (
         <ActiviteSheet
+          key={saisieAutre.evenement?.id ?? 'nouveau'}
           dogId={dog.id}
           date={date}
+          evenement={saisieAutre.evenement}
           onClose={() => setSaisieAutre(null)}
           onSaved={() => {
             setSaisieAutre(null)
@@ -330,7 +350,7 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         />
       )}
 
-      {saisieAutre === 'poids' && (
+      {saisieAutre?.kind === 'poids' && (
         <PoidsSheet
           dog={dog}
           date={date}

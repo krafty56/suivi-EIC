@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { horodatage } from '../lib/date'
+import type { SuiviEvent } from '../lib/types'
+import { datetimeLocalDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 type Props = {
   dogId: string
   date: string
+  evenement?: SuiviEvent
   onClose: () => void
   onSaved: () => void
 }
@@ -13,10 +15,14 @@ type Props = {
 const SUGGESTIONS = ['Promenade', 'Sortie jardin', 'Trajet voiture']
 
 /** Ce qui entoure le chien plutôt que ce qu'il présente : utile pour
- * relier plus tard une poussée de symptômes à un contexte. */
-export default function ActiviteSheet({ dogId, date, onClose, onSaved }: Props) {
-  const [nom, setNom] = useState('')
-  const [hhmm, setHhmm] = useState(new Date().toTimeString().slice(0, 5))
+ * relier plus tard une poussée de symptômes à un contexte. Sert aussi à
+ * corriger une activité déjà enregistrée. */
+export default function ActiviteSheet({ dogId, date, evenement, onClose, onSaved }: Props) {
+  const maintenant = datetimeLocalDe(new Date().toISOString())
+  const [nom, setNom] = useState(evenement?.nom ?? '')
+  const [quand, setQuand] = useState(
+    evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -24,14 +30,17 @@ export default function ActiviteSheet({ dogId, date, onClose, onSaved }: Props) 
     if (!nom.trim()) return
     setBusy(true)
     setError(null)
-    const { error: dbError } = await supabase.from('events').insert({
+    const valeurs = {
       dog_id: dogId,
-      at: horodatage(date, hhmm),
-      type: 'activite',
+      at: isoDeDatetimeLocal(quand),
+      type: 'activite' as const,
       nom: nom.trim(),
       categorie: null,
       intensite: null,
-    })
+    }
+    const { error: dbError } = evenement
+      ? await supabase.from('events').update(valeurs).eq('id', evenement.id)
+      : await supabase.from('events').insert(valeurs)
     setBusy(false)
     if (dbError) setError(dbError.message)
     else onSaved()
@@ -65,11 +74,12 @@ export default function ActiviteSheet({ dogId, date, onClose, onSaved }: Props) 
           <input value={nom} onChange={(e) => setNom(e.target.value)} className={inputClass} />
         </Field>
 
-        <Field label="Heure">
+        <Field label="Quand ?">
           <input
-            type="time"
-            value={hhmm}
-            onChange={(e) => setHhmm(e.target.value)}
+            type="datetime-local"
+            value={quand}
+            max={maintenant}
+            onChange={(e) => setQuand(e.target.value)}
             className={inputClass}
           />
         </Field>
@@ -82,7 +92,7 @@ export default function ActiviteSheet({ dogId, date, onClose, onSaved }: Props) 
           className="w-full"
           onClick={() => void enregistrer()}
         >
-          {busy ? 'Enregistrement…' : 'Enregistrer'}
+          {busy ? 'Enregistrement…' : evenement ? 'Enregistrer les modifications' : 'Enregistrer'}
         </Button>
       </div>
     </Sheet>

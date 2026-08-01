@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import type { Dog, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import { FECAL_SCORES } from '../data/catalogs'
-import { heureDe, horodatage } from '../lib/date'
+import { LABEL_TYPE_EVENEMENT } from '../data/events'
+import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { Button, Card, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
@@ -22,6 +23,10 @@ const CHOIX_POSSIBLES: Raccourci[] = [
   })),
 ]
 
+type Ajout =
+  | { mode: 'nouveau'; depart: Raccourci | null }
+  | { mode: 'edition'; evenement: SuiviEvent }
+
 type Props = {
   dog: Dog
   date: string
@@ -29,11 +34,20 @@ type Props = {
   /** Change de valeur pour forcer un rechargement, quand un événement a été
    * ajouté ailleurs (traitement, note libre, activité). */
   refreshSignal?: number
+  /** Un événement de la liste dont le type n'est pas symptôme/selle/repas :
+   * son édition est déléguée à la feuille qui sait le traiter. */
+  onEditAutre?: (evenement: SuiviEvent) => void
 }
 
-export default function JournalSection({ dog, date, onDogChange, refreshSignal }: Props) {
+export default function JournalSection({
+  dog,
+  date,
+  onDogChange,
+  refreshSignal,
+  onEditAutre,
+}: Props) {
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
-  const [ajout, setAjout] = useState<Raccourci | 'catalogue' | null>(null)
+  const [ajout, setAjout] = useState<Ajout | null>(null)
   const [config, setConfig] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,15 +72,25 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
     void load()
   }, [load])
 
-  async function enregistrer(entree: Raccourci, intensite: number | null, hhmm?: string) {
-    const { error: dbError } = await supabase.from('events').insert({
+  async function sauvegarder(payload: {
+    id?: string
+    entree: Raccourci
+    intensite: number | null
+    quand: string
+    note: string
+  }) {
+    const valeurs = {
       dog_id: dog.id,
-      at: horodatage(date, hhmm),
-      type: entree.type,
-      nom: entree.nom,
-      categorie: entree.categorie,
-      intensite,
-    })
+      at: isoDeDatetimeLocal(payload.quand),
+      type: payload.entree.type,
+      nom: payload.entree.nom,
+      categorie: payload.entree.categorie,
+      intensite: payload.intensite,
+      note: payload.note.trim() || null,
+    }
+    const { error: dbError } = payload.id
+      ? await supabase.from('events').update(valeurs).eq('id', payload.id)
+      : await supabase.from('events').insert(valeurs)
     if (dbError) setError(dbError.message)
     else void load()
   }
@@ -75,6 +99,14 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
     const { error: dbError } = await supabase.from('events').delete().eq('id', id)
     if (dbError) setError(dbError.message)
     else void load()
+  }
+
+  function ouvrirEdition(event: SuiviEvent) {
+    if (event.type === 'symptome' || event.type === 'selle' || event.type === 'repas') {
+      setAjout({ mode: 'edition', evenement: event })
+    } else {
+      onEditAutre?.(event)
+    }
   }
 
   const raccourcis = dog.saisie_rapide ?? []
@@ -109,13 +141,11 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
               <button
                 key={`${r.type}-${r.nom}`}
                 type="button"
-                onClick={() => (r.echelle ? setAjout(r) : void enregistrer(r, null))}
+                onClick={() => setAjout({ mode: 'nouveau', depart: r })}
                 className="relative rounded-2xl bg-white px-3 py-5 text-center shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
               >
                 <span className="block text-sm font-semibold text-slate-900">{r.nom}</span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  {r.echelle ? 'appui puis intensité' : 'un appui'}
-                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">Appui puis validation</span>
                 {compte(r) > 0 && (
                   <span className="absolute top-2 right-2 min-w-6 rounded-full bg-brand-50 px-1.5 py-0.5 text-xs font-bold tabular-nums text-slate-900">
                     {compte(r)}
@@ -142,21 +172,27 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
           ) : (
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
-                <li key={event.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-slate-900">{event.nom}</span>
-                    <span className="block text-xs text-slate-500">
-                      {event.categorie ?? (event.type === 'selle' ? 'Selle' : 'Repas')}
+                <li key={event.id} className="flex items-center gap-1 px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => ouvrirEdition(event)}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-slate-50"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-slate-900">{event.nom}</span>
+                      <span className="block text-xs text-slate-500">
+                        {event.categorie ?? LABEL_TYPE_EVENEMENT[event.type]}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 text-sm tabular-nums text-slate-500">
-                    {heureDe(event.at)}
-                  </span>
-                  {event.intensite !== null && (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
-                      {event.intensite}
+                    <span className="shrink-0 text-sm tabular-nums text-slate-500">
+                      {heureDe(event.at)}
                     </span>
-                  )}
+                    {event.intensite !== null && (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
+                        {event.intensite}
+                      </span>
+                    )}
+                  </button>
                   <button
                     type="button"
                     aria-label={`Supprimer ${event.nom} de ${heureDe(event.at)}`}
@@ -175,7 +211,7 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
           type="button"
           variant="secondary"
           className="mt-3 w-full py-2.5 text-sm"
-          onClick={() => setAjout('catalogue')}
+          onClick={() => setAjout({ mode: 'nouveau', depart: null })}
         >
           Ajouter une entrée
         </Button>
@@ -183,11 +219,13 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
 
       {ajout && (
         <AjoutSheet
-          depart={ajout === 'catalogue' ? null : ajout}
+          key={ajout.mode === 'edition' ? ajout.evenement.id : 'nouveau'}
+          init={ajout}
+          date={date}
           onClose={() => setAjout(null)}
-          onAdd={(entree, intensite, hhmm) => {
+          onSave={(payload) => {
             setAjout(null)
-            void enregistrer(entree, intensite, hhmm)
+            void sauvegarder(payload)
           }}
         />
       )}
@@ -206,19 +244,44 @@ export default function JournalSection({ dog, date, onDogChange, refreshSignal }
   )
 }
 
-/** Choix de l'entrée, puis de son intensité et de son heure. */
+/** Choix de l'entrée, puis de sa date, son heure, son intensité et une note.
+ * Sert aussi bien à ajouter qu'à corriger une entrée déjà enregistrée. */
 function AjoutSheet({
-  depart,
+  init,
+  date,
   onClose,
-  onAdd,
+  onSave,
 }: {
-  depart: Raccourci | null
+  init: Ajout
+  date: string
   onClose: () => void
-  onAdd: (entree: Raccourci, intensite: number | null, hhmm: string) => void
+  onSave: (payload: {
+    id?: string
+    entree: Raccourci
+    intensite: number | null
+    quand: string
+    note: string
+  }) => void
 }) {
-  const [choisi, setChoisi] = useState<Raccourci | null>(depart)
-  const [intensite, setIntensite] = useState<number | null>(null)
-  const [hhmm, setHhmm] = useState(new Date().toTimeString().slice(0, 5))
+  const evenement = init.mode === 'edition' ? init.evenement : null
+  const depart = init.mode === 'nouveau' ? init.depart : null
+  const maintenant = datetimeLocalDe(new Date().toISOString())
+
+  const [choisi, setChoisi] = useState<Raccourci | null>(
+    evenement
+      ? {
+          type: evenement.type as 'symptome' | 'selle' | 'repas',
+          nom: evenement.nom,
+          categorie: evenement.categorie,
+          echelle: evenement.intensite !== null,
+        }
+      : depart,
+  )
+  const [intensite, setIntensite] = useState<number | null>(evenement?.intensite ?? null)
+  const [quand, setQuand] = useState(
+    evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
+  )
+  const [note, setNote] = useState(evenement?.note ?? '')
 
   if (!choisi) {
     return (
@@ -301,11 +364,21 @@ function AjoutSheet({
           </div>
         )}
 
-        <Field label="Heure">
+        <Field label="Quand ?">
           <input
-            type="time"
-            value={hhmm}
-            onChange={(e) => setHhmm(e.target.value)}
+            type="datetime-local"
+            value={quand}
+            max={maintenant}
+            onChange={(e) => setQuand(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field label="Notes (optionnel)">
+          <textarea
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             className={inputClass}
           />
         </Field>
@@ -314,11 +387,19 @@ function AjoutSheet({
           type="button"
           className="w-full"
           disabled={choisi.echelle && intensite === null}
-          onClick={() => onAdd(choisi, choisi.echelle ? intensite : null, hhmm)}
+          onClick={() =>
+            onSave({
+              id: evenement?.id,
+              entree: choisi,
+              intensite: choisi.echelle ? intensite : null,
+              quand,
+              note,
+            })
+          }
         >
-          Enregistrer
+          {evenement ? 'Enregistrer les modifications' : 'Enregistrer'}
         </Button>
-        {!depart && (
+        {(evenement !== null || depart === null) && (
           <Button
             type="button"
             variant="ghost"
@@ -328,7 +409,7 @@ function AjoutSheet({
               setIntensite(null)
             }}
           >
-            Retour à la liste
+            Changer
           </Button>
         )}
       </div>

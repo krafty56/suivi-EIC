@@ -42,3 +42,15 @@ export function horodatage(date: string, hhmm?: string): string {
 export function heureDe(at: string): string {
   return new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
+
+/** Valeur locale pour un input datetime-local, à partir d'un horodatage ISO. */
+export function datetimeLocalDe(at: string): string {
+  const d = new Date(at)
+  const offset = d.getTimezoneOffset() * 60_000
+  return new Date(d.getTime() - offset).toISOString().slice(0, 16)
+}
+
+/** Horodatage ISO à partir de la valeur locale (sans fuseau) d'un input datetime-local. */
+export function isoDeDatetimeLocal(value: string): string {
+  return new Date(value).toISOString()
+}

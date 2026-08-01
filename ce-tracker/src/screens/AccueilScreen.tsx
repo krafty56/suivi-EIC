@@ -2,20 +2,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Appetit, DailyEntry, Dog, DogMedication, Energie, SuiviEvent } from '../lib/types'
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS } from '../data/catalogs'
+import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { formatLongDate, formatTime, heureDe, todayISO } from '../lib/date'
 import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dog: Dog }
-
-const LABEL_TYPE: Record<string, string> = {
-  symptome: 'Symptôme',
-  selle: 'Selle',
-  repas: 'Repas',
-  activite: 'Activité',
-  traitement: 'Traitement',
-  note: 'Note',
-}
 
 function libelleAppetit(v: Appetit | null): string | null {
   return v ? (APPETIT_OPTIONS.find((o) => o.value === v)?.label ?? v) : null
@@ -70,9 +62,9 @@ export default function AccueilScreen({ dog }: Props) {
   if (error) return <div className="p-4"><ErrorMessage>{error}</ErrorMessage></div>
   if (events === null) return <Spinner />
 
-  const comptes = ['symptome', 'selle', 'repas', 'activite'].map((type) => ({
+  const comptes = (['symptome', 'selle', 'repas', 'activite'] as const).map((type) => ({
     type,
-    label: LABEL_TYPE[type],
+    label: LABEL_TYPE_EVENEMENT[type],
     compte: events.filter((e) => e.type === type).length,
   }))
 
@@ -164,7 +156,7 @@ export default function AccueilScreen({ dog }: Props) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-slate-900">{event.nom}</span>
                     <span className="block text-xs text-slate-500">
-                      {event.categorie ?? LABEL_TYPE[event.type] ?? event.type}
+                      {event.categorie ?? LABEL_TYPE_EVENEMENT[event.type]}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm tabular-nums text-slate-500">
