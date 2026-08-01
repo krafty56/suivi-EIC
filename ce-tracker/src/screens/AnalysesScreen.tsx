@@ -237,7 +237,7 @@ export default function AnalysesScreen({ dogId }: Props) {
             </div>
             <div className="h-40 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={refluxPoints} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                <BarChart data={refluxPoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
                   <XAxis
                     dataKey="label"
@@ -245,7 +245,7 @@ export default function AnalysesScreen({ dogId }: Props) {
                     interval="preserveStartEnd"
                     minTickGap={24}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={24} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
                   <Tooltip
                     labelFormatter={(label) => `Le ${label}`}
                     formatter={(v) => [v, 'reflux']}
@@ -266,7 +266,7 @@ export default function AnalysesScreen({ dogId }: Props) {
             </div>
             <div className="h-40 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={crisesPoints} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                <BarChart data={crisesPoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
                   <XAxis
                     dataKey="label"
@@ -274,7 +274,7 @@ export default function AnalysesScreen({ dogId }: Props) {
                     interval="preserveStartEnd"
                     minTickGap={24}
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={24} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={32} />
                   <Tooltip
                     labelFormatter={(label) => `Le ${label}`}
                     formatter={(v) => [v, 'crise']}
@@ -300,7 +300,7 @@ export default function AnalysesScreen({ dogId }: Props) {
             ) : (
               <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={scorePoints} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                  <LineChart data={scorePoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
                     <XAxis
                       dataKey="label"
@@ -312,7 +312,7 @@ export default function AnalysesScreen({ dogId }: Props) {
                       domain={[1, 7]}
                       ticks={[1, 2, 3, 4, 5, 6, 7]}
                       tick={{ fontSize: 11 }}
-                      width={24}
+                      width={28}
                     />
                     <Tooltip
                       labelFormatter={(label) => `Le ${label}`}
