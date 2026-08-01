@@ -29,6 +29,17 @@ function Glyph({ className = '', children }: Props & { children: React.ReactNode
   )
 }
 
+/** Toit et porte : le récapitulatif du jour, écran d'accueil. */
+export function IconAccueil(props: Props) {
+  return (
+    <Glyph {...props}>
+      <path d="M4.2 11.2 12 4.4l7.8 6.8" />
+      <path d="M6.4 9.6v9.2a1 1 0 0 0 1 1H16.6a1 1 0 0 0 1-1V9.6" />
+      <path d="M10.2 19.8v-5.4h3.6v5.4" />
+    </Glyph>
+  )
+}
+
 /** Presse-papier coché : la journée que l'on remplit. */
 export function IconSaisie(props: Props) {
   return (

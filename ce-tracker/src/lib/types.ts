@@ -1,4 +1,4 @@
-export type EventType = 'symptome' | 'selle' | 'repas' | 'activite'
+export type EventType = 'symptome' | 'selle' | 'repas' | 'activite' | 'traitement' | 'note'
 
 /** Une observation horodatée : c'est ce qui rend les comptages possibles. */
 export type SuiviEvent = {
@@ -13,6 +13,8 @@ export type SuiviEvent = {
   /** Champs riches sans colonne dédiée : mucus, sang, volume, durée… */
   details: Record<string, unknown>
   note: string | null
+  /** Renseigné pour un événement de type traitement : le médicament pris. */
+  dog_medication_id: string | null
 }
 
 export type LabValue = {

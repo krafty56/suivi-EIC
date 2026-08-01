@@ -3,19 +3,8 @@ import { supabase } from '../lib/supabase'
 import type { Dog, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import { FECAL_SCORES } from '../data/catalogs'
+import { heureDe, horodatage } from '../lib/date'
 import { Button, Card, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
-
-/** Heure d'un horodatage, en local, sans les secondes. */
-function heure(at: string): string {
-  return new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-}
-
-/** Horodatage à enregistrer : la date affichée, à l'heure qu'il est. */
-function horodatage(date: string, hhmm?: string): string {
-  const [h, m] = (hhmm ?? new Date().toTimeString().slice(0, 5)).split(':').map(Number)
-  const [y, mo, d] = date.split('-').map(Number)
-  return new Date(y, mo - 1, d, h, m).toISOString()
-}
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
 const ENTREES_HORS_CATALOGUE: Raccourci[] = [
@@ -37,9 +26,12 @@ type Props = {
   dog: Dog
   date: string
   onDogChange: (dog: Dog) => void
+  /** Change de valeur pour forcer un rechargement, quand un événement a été
+   * ajouté ailleurs (traitement, note libre, activité). */
+  refreshSignal?: number
 }
 
-export default function JournalSection({ dog, date, onDogChange }: Props) {
+export default function JournalSection({ dog, date, onDogChange, refreshSignal }: Props) {
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [ajout, setAjout] = useState<Raccourci | 'catalogue' | null>(null)
   const [config, setConfig] = useState(false)
@@ -60,7 +52,7 @@ export default function JournalSection({ dog, date, onDogChange }: Props) {
 
     if (dbError) setError(dbError.message)
     else setEvents(data as SuiviEvent[])
-  }, [dog.id, date])
+  }, [dog.id, date, refreshSignal])
 
   useEffect(() => {
     void load()
@@ -158,7 +150,7 @@ export default function JournalSection({ dog, date, onDogChange }: Props) {
                     </span>
                   </span>
                   <span className="shrink-0 text-sm tabular-nums text-slate-500">
-                    {heure(event.at)}
+                    {heureDe(event.at)}
                   </span>
                   {event.intensite !== null && (
                     <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
@@ -167,7 +159,7 @@ export default function JournalSection({ dog, date, onDogChange }: Props) {
                   )}
                   <button
                     type="button"
-                    aria-label={`Supprimer ${event.nom} de ${heure(event.at)}`}
+                    aria-label={`Supprimer ${event.nom} de ${heureDe(event.at)}`}
                     onClick={() => void supprimer(event.id)}
                     className="shrink-0 rounded-lg px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-100"
                   >

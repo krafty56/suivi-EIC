@@ -12,25 +12,34 @@ import {
   Spinner,
   inputClass,
 } from '../components/ui'
+import ActiviteSheet from './ActiviteSheet'
 import CrisisSheet from './CrisisSheet'
 import JournalSection from './JournalSection'
+import NoteLibreSheet from './NoteLibreSheet'
+import PoidsSheet from './PoidsSheet'
+import TraitementSheet from './TraitementSheet'
 
 type Props = { dog: Dog; onDogChange: (dog: Dog) => void }
 
-export default function DailyEntryScreen({ dog, onDogChange }: Props) {
+type SaisieAutre = 'traitement' | 'note' | 'activite' | 'poids' | null
+
+export default function SaisirHubScreen({ dog, onDogChange }: Props) {
   const [date, setDate] = useState(todayISO())
   const [loading, setLoading] = useState(true)
   const [medications, setMedications] = useState<DogMedication[]>([])
 
   // Ce qui reste ici relève du jugement de fin de journée. Tout ce qui
-  // s'observe à un instant précis — symptômes, selles, repas — est passé
-  // dans le journal, qui seul permet de compter.
+  // s'observe à un instant précis — symptômes, selles, repas, traitement,
+  // activité, note — est passé par le journal ou les cartes ci-dessous, qui
+  // seuls permettent de compter.
   const [appetit, setAppetit] = useState<Appetit | null>(null)
   const [energie, setEnergie] = useState<Energie | null>(null)
   const [notes, setNotes] = useState('')
   const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
 
   const [crisisSheet, setCrisisSheet] = useState(false)
+  const [saisieAutre, setSaisieAutre] = useState<SaisieAutre>(null)
+  const [refreshSignal, setRefreshSignal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -153,7 +162,37 @@ export default function DailyEntryScreen({ dog, onDogChange }: Props) {
           <p className="mt-2 text-sm text-slate-600">Suivi de {dog.name}.</p>
         </Card>
 
-        <JournalSection dog={dog} date={date} onDogChange={onDogChange} />
+        <JournalSection
+          dog={dog}
+          date={date}
+          onDogChange={onDogChange}
+          refreshSignal={refreshSignal}
+        />
+
+        <div>
+          <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+            Autres saisies
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {(
+              [
+                { id: 'traitement', label: 'Traitement' },
+                { id: 'activite', label: 'Activité' },
+                { id: 'note', label: 'Note libre' },
+                { id: 'poids', label: 'Poids' },
+              ] as const
+            ).map((carte) => (
+              <button
+                key={carte.id}
+                type="button"
+                onClick={() => setSaisieAutre(carte.id)}
+                className="rounded-2xl bg-white px-2 py-4 text-center text-xs font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
+              >
+                {carte.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {loading ? (
           <Spinner />
@@ -251,6 +290,55 @@ export default function DailyEntryScreen({ dog, onDogChange }: Props) {
           dogId={dog.id}
           onClose={() => setCrisisSheet(false)}
           onSaved={() => setCrisisSheet(false)}
+        />
+      )}
+
+      {saisieAutre === 'traitement' && (
+        <TraitementSheet
+          dogId={dog.id}
+          date={date}
+          medications={medications}
+          onClose={() => setSaisieAutre(null)}
+          onSaved={() => {
+            setSaisieAutre(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
+      )}
+
+      {saisieAutre === 'note' && (
+        <NoteLibreSheet
+          dogId={dog.id}
+          date={date}
+          onClose={() => setSaisieAutre(null)}
+          onSaved={() => {
+            setSaisieAutre(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
+      )}
+
+      {saisieAutre === 'activite' && (
+        <ActiviteSheet
+          dogId={dog.id}
+          date={date}
+          onClose={() => setSaisieAutre(null)}
+          onSaved={() => {
+            setSaisieAutre(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
+      )}
+
+      {saisieAutre === 'poids' && (
+        <PoidsSheet
+          dog={dog}
+          date={date}
+          onClose={() => setSaisieAutre(null)}
+          onSaved={(updated) => {
+            setSaisieAutre(null)
+            onDogChange(updated)
+          }}
         />
       )}
     </div>

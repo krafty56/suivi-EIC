@@ -2,15 +2,17 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import type { Dog } from './lib/types'
+import AccueilScreen from './screens/AccueilScreen'
 import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
-import DailyEntryScreen from './screens/DailyEntryScreen'
+import SaisirHubScreen from './screens/SaisirHubScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabHubScreen from './screens/LabHubScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
 import {
+  IconAccueil,
   IconChien,
   IconFrise,
   IconHistorique,
@@ -18,7 +20,7 @@ import {
   IconSaisie,
 } from './components/icons'
 
-type Tab = 'daily' | 'history' | 'timeline' | 'labs' | 'dog'
+type Tab = 'home' | 'daily' | 'history' | 'timeline' | 'labs' | 'dog'
 
 const TABS: {
   id: Tab
@@ -26,7 +28,8 @@ const TABS: {
   title: string
   Icon: (props: { className?: string }) => React.ReactElement
 }[] = [
-  { id: 'daily', label: 'Saisie', title: 'Saisie quotidienne', Icon: IconSaisie },
+  { id: 'home', label: 'Accueil', title: 'Aujourd’hui', Icon: IconAccueil },
+  { id: 'daily', label: 'Saisir', title: 'Saisir', Icon: IconSaisie },
   { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
   { id: 'timeline', label: 'Frise', title: 'Frise temporelle', Icon: IconFrise },
   { id: 'labs', label: 'Labo', title: 'Labo', Icon: IconLabo },
@@ -46,7 +49,7 @@ export default function App() {
   const [dog, setDog] = useState<Dog | null>(null)
   const [dogLoaded, setDogLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('daily')
+  const [tab, setTab] = useState<Tab>('home')
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -125,7 +128,8 @@ export default function App() {
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        {tab === 'daily' && <DailyEntryScreen dog={dog} onDogChange={setDog} />}
+        {tab === 'home' && <AccueilScreen dog={dog} />}
+        {tab === 'daily' && <SaisirHubScreen dog={dog} onDogChange={setDog} />}
         {tab === 'history' && <HistoryHubScreen dogId={dog.id} />}
         {tab === 'timeline' && (
           <Suspense fallback={<Spinner label="Chargement de la frise…" />}>
@@ -136,7 +140,7 @@ export default function App() {
         {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
       </main>
 
-      <nav className="grid shrink-0 grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="grid shrink-0 grid-cols-6 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
         {TABS.map((item) => (
           <button
             key={item.id}

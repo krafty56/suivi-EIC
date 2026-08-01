@@ -30,3 +30,15 @@ export function formatTime(time: string | null): string | null {
   if (!time) return null
   return time.slice(0, 5)
 }
+
+/** Horodatage à enregistrer : la date choisie, à l'heure donnée (ou l'heure actuelle). */
+export function horodatage(date: string, hhmm?: string): string {
+  const [h, m] = (hhmm ?? new Date().toTimeString().slice(0, 5)).split(':').map(Number)
+  const [y, mo, d] = date.split('-').map(Number)
+  return new Date(y, mo - 1, d, h, m).toISOString()
+}
+
+/** Heure d'un horodatage, en local, sans les secondes. */
+export function heureDe(at: string): string {
+  return new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
