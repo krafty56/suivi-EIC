@@ -1,4 +1,4 @@
-export type EventType = 'symptome' | 'selle' | 'repas'
+export type EventType = 'symptome' | 'selle' | 'repas' | 'activite'
 
 /** Une observation horodatée : c'est ce qui rend les comptages possibles. */
 export type SuiviEvent = {
@@ -10,6 +10,25 @@ export type SuiviEvent = {
   categorie: string | null
   /** 1 à 3 pour un symptôme coté, 1 à 7 pour le score fécal d'une selle. */
   intensite: number | null
+  /** Champs riches sans colonne dédiée : mucus, sang, volume, durée… */
+  details: Record<string, unknown>
+  note: string | null
+}
+
+export type LabValue = {
+  id: string
+  dog_id: string
+  date: string
+  lab_name: string | null
+  parameter_key: string
+  parameter_label: string
+  category: string | null
+  value: number | null
+  value_text: string | null
+  unit: string | null
+  ref_low: number | null
+  ref_high: number | null
+  flag: 'low' | 'normal' | 'high' | 'abnormal' | null
   note: string | null
 }
 
@@ -128,6 +147,7 @@ export type SharedDossier = {
   crises: Crise[]
   events: SuiviEvent[]
   lab_reports: LabReport[]
+  lab_values: LabValue[]
   weights: Weight[]
   scores: ClinicalScore[]
 }

@@ -47,6 +47,18 @@ export const CATALOGUE_SYMPTOMES: { categorie: string; symptomes: SymptomeDef[] 
       { nom: 'Chute de poils localisée', echelle: false },
     ],
   },
+  {
+    // Ajoutée après l'inventaire des données personnelles importées : sur 548
+    // relevés historiques, 153 portent cette catégorie, absente des deux
+    // listes d'origine.
+    categorie: 'Comportement',
+    symptomes: [
+      { nom: 'Déclenchement bruit', echelle: false },
+      { nom: 'Déclenchement humain', echelle: true },
+      { nom: 'Déclenchement chien', echelle: false },
+      { nom: 'Agitation / incapacité à se poser', echelle: true },
+    ],
+  },
 ]
 
 /** Libellés des cotations de l'échelle 1-3. */
