@@ -6,7 +6,7 @@ import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
 import DailyEntryScreen from './screens/DailyEntryScreen'
-import HistoryScreen from './screens/HistoryScreen'
+import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabReportsScreen from './screens/LabReportsScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
@@ -114,7 +114,7 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto">
         {tab === 'daily' && <DailyEntryScreen dogId={dog.id} dogName={dog.name} />}
-        {tab === 'history' && <HistoryScreen dogId={dog.id} />}
+        {tab === 'history' && <HistoryHubScreen dogId={dog.id} />}
         {tab === 'timeline' && (
           <Suspense fallback={<Spinner label="Chargement de la frise…" />}>
             <TimelineScreen dogId={dog.id} />

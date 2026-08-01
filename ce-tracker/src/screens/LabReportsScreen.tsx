@@ -72,6 +72,11 @@ export default function LabReportsScreen({ dogId }: Props) {
           <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
             {formatLongDate(report.date)}
           </p>
+          {report.albumine !== null && (
+            <p className="mt-1 text-sm font-medium text-slate-700 tabular-nums">
+              Albuminémie {report.albumine} g/L
+            </p>
+          )}
           {report.note && <p className="mt-1 text-sm text-slate-600">{report.note}</p>}
           <button type="button" onClick={() => setZoomed(report)} className="mt-3 block w-full">
             <img
@@ -132,6 +137,7 @@ function LabReportSheet({
 }) {
   const [date, setDate] = useState(todayISO())
   const [note, setNote] = useState('')
+  const [albumine, setAlbumine] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -160,7 +166,13 @@ function LabReportSheet({
 
     const { error: dbError } = await supabase
       .from('lab_reports')
-      .insert({ dog_id: dogId, date, storage_path: path, note: note.trim() || null })
+      .insert({
+        dog_id: dogId,
+        date,
+        storage_path: path,
+        note: note.trim() || null,
+        albumine: albumine.trim() === '' ? null : Number(albumine.replace(',', '.')),
+      })
 
     setBusy(false)
     if (dbError) {
@@ -192,6 +204,18 @@ function LabReportSheet({
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
+          />
+        </Field>
+
+        <Field
+          label="Albuminémie (g/L)"
+          hint="Facultatif. C’est le critère biologique du CCECAI : le renseigner ici évite d’avoir à relire la photo."
+        >
+          <input
+            inputMode="decimal"
+            value={albumine}
+            onChange={(e) => setAlbumine(e.target.value)}
+            className={inputClass}
           />
         </Field>
 

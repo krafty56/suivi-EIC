@@ -33,6 +33,8 @@ export default function DailyEntryScreen({ dogId, dogName }: Props) {
   const [appetit, setAppetit] = useState<Appetit | null>(null)
   const [energie, setEnergie] = useState<Energie | null>(null)
   const [vomissements, setVomissements] = useState(0)
+  // null = non renseigné, distinct de zéro : « aucune selle » est une observation.
+  const [selles, setSelles] = useState<number | null>(null)
   const [symptoms, setSymptoms] = useState<Symptom[]>([])
   const [notes, setNotes] = useState('')
   const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
@@ -71,6 +73,7 @@ export default function DailyEntryScreen({ dogId, dogName }: Props) {
     setAppetit(entry?.appetit ?? null)
     setEnergie(entry?.energie ?? null)
     setVomissements(entry?.vomissements_count ?? 0)
+    setSelles(entry?.selles_count ?? null)
     setSymptoms(entry?.symptoms ?? [])
     setNotes(entry?.notes ?? '')
 
@@ -124,6 +127,7 @@ export default function DailyEntryScreen({ dogId, dogName }: Props) {
           appetit,
           energie,
           vomissements_count: vomissements,
+          selles_count: selles,
           symptoms,
           notes: notes.trim() || null,
         },
@@ -213,31 +217,21 @@ export default function DailyEntryScreen({ dogId, dogName }: Props) {
               <SegmentedControl options={ENERGIE_OPTIONS} value={energie} onChange={setEnergie} />
             </Card>
 
-            <Card>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Vomissements</p>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    aria-label="Retirer un vomissement"
-                    onClick={() => setVomissements((count) => Math.max(0, count - 1))}
-                    className="h-11 w-11 rounded-full bg-slate-100 text-2xl font-bold text-slate-700 hover:bg-slate-200"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center text-xl font-bold tabular-nums text-slate-900">
-                    {vomissements}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Ajouter un vomissement"
-                    onClick={() => setVomissements((count) => count + 1)}
-                    className="h-11 w-11 rounded-full bg-slate-100 text-2xl font-bold text-slate-700 hover:bg-slate-200"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+            <Card className="space-y-4">
+              <Compteur
+                libelle="Vomissements"
+                nom="vomissement"
+                valeur={vomissements}
+                onChange={(v) => setVomissements(v ?? 0)}
+              />
+              <Compteur
+                libelle="Selles"
+                nom="selle"
+                aide="Nombre de défécations sur la journée."
+                valeur={selles}
+                effacable
+                onChange={setSelles}
+              />
             </Card>
 
             <Card>
@@ -450,5 +444,58 @@ function SymptomSheet({
         ))}
       </div>
     </Sheet>
+  )
+}
+
+/** Compteur +/− . Quand il est effaçable, on peut revenir à « non renseigné ». */
+function Compteur({
+  libelle,
+  nom,
+  aide,
+  valeur,
+  effacable = false,
+  onChange,
+}: {
+  libelle: string
+  nom: string
+  aide?: string
+  valeur: number | null
+  effacable?: boolean
+  onChange: (valeur: number | null) => void
+}) {
+  const retirer = () => {
+    if (valeur === null) return
+    if (valeur === 0) onChange(effacable ? null : 0)
+    else onChange(valeur - 1)
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-slate-700">{libelle}</p>
+        {aide && <p className="mt-0.5 text-xs text-slate-500">{aide}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <button
+          type="button"
+          aria-label={`Retirer une ${nom}`}
+          onClick={retirer}
+          className="h-11 w-11 rounded-full bg-slate-100 text-2xl font-bold text-slate-700 hover:bg-slate-200"
+        >
+          −
+        </button>
+        <span className="w-8 text-center text-xl font-bold tabular-nums text-slate-900">
+          {valeur ?? '—'}
+        </span>
+        <button
+          type="button"
+          aria-label={`Ajouter une ${nom}`}
+          onClick={() => onChange(valeur === null ? 1 : valeur + 1)}
+          className="h-11 w-11 rounded-full bg-slate-100 text-2xl font-bold text-slate-700 hover:bg-slate-200"
+        >
+          +
+        </button>
+      </div>
+    </div>
   )
 }

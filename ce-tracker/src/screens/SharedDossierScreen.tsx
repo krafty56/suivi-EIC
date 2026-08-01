@@ -9,7 +9,8 @@ import {
   FECAL_SCORES,
   GRAVITE_OPTIONS,
 } from '../data/catalogs'
-import { formatLongDate, formatTime } from '../lib/date'
+import { TOUS_LES_ITEMS } from '../data/scores'
+import { formatLongDate, formatShortDate, formatTime } from '../lib/date'
 import { Button, Card, Spinner } from '../components/ui'
 import { labPhotoUrl } from '../lib/storage'
 
@@ -51,7 +52,7 @@ export default function SharedDossierScreen({ token }: Props) {
 
   if (!dossier) return <Spinner label="Ouverture du dossier…" />
 
-  const { dog, share, medications, entries, crises, lab_reports } = dossier
+  const { dog, share, medications, entries, crises, lab_reports, weights, scores } = dossier
   const actifs = medications.filter((m) => m.actif)
   const dates = [...new Set([...entries.map((e) => e.date), ...crises.map((c) => c.date)])].sort(
     (a, b) => b.localeCompare(a),
@@ -127,6 +128,56 @@ export default function SharedDossierScreen({ token }: Props) {
         )}
       </Card>
 
+      {scores.length > 0 && (
+        <Card>
+          <h2 className="mb-2 font-bold text-slate-900">Indices d’activité</h2>
+          <p className="mb-3 text-xs text-slate-500">
+            CIBDAI sur 18 (six critères cliniques), CCECAI sur 27 (avec albuminémie, ascite et
+            prurit). Cotation renseignée par le propriétaire.
+          </p>
+          <div className="space-y-3">
+            {[...new Set(scores.map((s) => s.date))].map((date) => {
+              const dujour = scores.filter((s) => s.date === date)
+              const detail = dujour.find((s) => s.indice === 'ccecai') ?? dujour[0]
+              return (
+                <div key={date} className="break-inside-avoid border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+                  <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
+                    {formatLongDate(date)}
+                  </p>
+                  <p className="text-sm text-slate-700">
+                    {dujour
+                      .map(
+                        (s) =>
+                          `${s.indice.toUpperCase()} ${s.total}/${s.indice === 'cibdai' ? 18 : 27} — ${s.severite}`,
+                      )
+                      .join(' · ')}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {TOUS_LES_ITEMS.filter((item) => item.id in detail.items)
+                      .map((item) => `${item.critere} ${detail.items[item.id]}`)
+                      .join(' · ')}
+                  </p>
+                  {detail.note && <p className="mt-0.5 text-sm text-slate-500 italic">{detail.note}</p>}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      {weights.length > 1 && (
+        <Card>
+          <h2 className="mb-2 font-bold text-slate-900">Poids</h2>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
+            {weights.map((mesure) => (
+              <li key={mesure.id} className="tabular-nums">
+                {formatShortDate(mesure.date)} · {mesure.poids} kg
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {lab_reports.length > 0 && (
         <Card>
           <h2 className="mb-2 font-bold text-slate-900">Comptes rendus de laboratoire</h2>
@@ -135,6 +186,9 @@ export default function SharedDossierScreen({ token }: Props) {
               <figure key={report.id}>
                 <figcaption className="text-sm font-medium text-slate-700 first-letter:uppercase">
                   {formatLongDate(report.date)}
+                  {report.albumine !== null && (
+                    <span className="font-normal text-slate-600"> — albuminémie {report.albumine} g/L</span>
+                  )}
                   {report.note && <span className="font-normal text-slate-500"> — {report.note}</span>}
                 </figcaption>
                 <img
@@ -232,6 +286,7 @@ function Journee({
               </>
             )}
             {entry.vomissements_count > 0 && <> · {entry.vomissements_count} vomissement(s)</>}
+            {entry.selles_count !== null && <> · {entry.selles_count} selle(s)</>}
           </p>
 
           {entry.symptoms.length > 0 && (

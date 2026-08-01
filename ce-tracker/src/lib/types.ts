@@ -36,6 +36,7 @@ export type DailyEntry = {
   appetit: Appetit | null
   energie: Energie | null
   vomissements_count: number
+  selles_count: number | null
   symptoms: Symptom[]
   notes: string | null
 }
@@ -73,6 +74,25 @@ export type LabReport = {
   date: string
   storage_path: string
   note: string | null
+  albumine: number | null
+}
+
+export type Weight = {
+  id: string
+  dog_id: string
+  date: string
+  poids: number
+}
+
+export type ClinicalScore = {
+  id: string
+  dog_id: string
+  date: string
+  indice: 'cibdai' | 'ccecai'
+  items: Record<string, number>
+  total: number
+  severite: string | null
+  note: string | null
 }
 
 /** Ce que renvoie la fonction get_shared_dossier au vétérinaire. */
@@ -83,6 +103,8 @@ export type SharedDossier = {
   entries: DailyEntry[]
   crises: Crise[]
   lab_reports: LabReport[]
+  weights: Weight[]
+  scores: ClinicalScore[]
 }
 
 export type FoodEntry = {
