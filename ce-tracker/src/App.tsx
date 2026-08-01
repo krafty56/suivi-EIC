@@ -144,10 +144,18 @@ export default function App() {
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
             className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ${
-              tab === item.id ? 'text-brand-700' : 'text-slate-500'
+              tab === item.id ? 'text-slate-900' : 'text-slate-500'
             }`}
           >
-            <item.Icon />
+            {/* La sauge marque l'onglet courant en pastille plutôt qu'en couleur de
+                texte : sur blanc elle ne contraste qu'à 1,7:1, illisible à 11 px. */}
+            <span
+              className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${
+                tab === item.id ? 'bg-brand-50' : ''
+              }`}
+            >
+              <item.Icon />
+            </span>
             {item.label}
           </button>
         ))}
