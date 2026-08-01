@@ -43,7 +43,18 @@ Comme l'application n'est pas à la racine du dépôt, le champ
 La migration initiale est idempotente (`create table if not exists`,
 `drop policy if exists`) : la rejouer sur une base déjà à jour ne casse rien.
 
-## Ce que couvre cette phase
+## Phase 2
+
+- **Partage vétérinaire** : lien `/?share=<jeton>` en lecture seule, sans compte côté
+  vétérinaire, valable 90 jours et révocable. L'accès ne passe pas par les tables mais par
+  la fonction `get_shared_dossier`, en `security definer`, qui vérifie le jeton et ne renvoie
+  que le dossier concerné. L'application n'envoie pas l'email : le propriétaire copie le lien.
+- **Comptes rendus de labo** : photos dans le bucket Storage `lab-reports`. Lecture publique
+  mais chemins en UUID (`<dog_id>/<uuid>.<ext>`) ; l'écriture reste réservée au propriétaire.
+- **Frise temporelle** : score fécal, vomissements et symptômes sur un axe de temps, crises
+  marquées. Recharts est chargé à la demande pour ne pas alourdir la saisie quotidienne.
+
+## Ce que couvre la phase 1
 
 1. Authentification propriétaire (email / mot de passe)
 2. Fiche chien (création / édition)

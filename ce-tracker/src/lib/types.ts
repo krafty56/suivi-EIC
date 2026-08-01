@@ -57,6 +57,34 @@ export type Crise = {
   note: string | null
 }
 
+export type VetShare = {
+  id: string
+  dog_id: string
+  token: string
+  clinic_email: string | null
+  created_at: string
+  expires_at: string
+  revoked_at: string | null
+}
+
+export type LabReport = {
+  id: string
+  dog_id: string
+  date: string
+  storage_path: string
+  note: string | null
+}
+
+/** Ce que renvoie la fonction get_shared_dossier au vétérinaire. */
+export type SharedDossier = {
+  dog: Omit<Dog, 'owner_id'>
+  share: { expires_at: string; clinic_email: string | null }
+  medications: DogMedication[]
+  entries: DailyEntry[]
+  crises: Crise[]
+  lab_reports: LabReport[]
+}
+
 export type FoodEntry = {
   id: string
   dog_id: string

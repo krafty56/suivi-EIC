@@ -28,3 +28,28 @@ select,
 textarea {
   font-size: 16px;
 }
+
+/* Export PDF du dossier vétérinaire : le navigateur imprime la page telle quelle. */
+@media print {
+  html,
+  body,
+  #root {
+    height: auto;
+    background: white;
+  }
+
+  /* Les cartes perdent ombres et arrondis, et ne se coupent pas entre deux pages. */
+  section {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  img {
+    max-height: 20cm;
+    object-fit: contain;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}

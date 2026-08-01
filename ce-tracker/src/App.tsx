@@ -1,22 +1,32 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import type { Dog } from './lib/types'
 import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
-import MedicationsScreen from './screens/MedicationsScreen'
+import DogHubScreen from './screens/DogHubScreen'
 import DailyEntryScreen from './screens/DailyEntryScreen'
 import HistoryScreen from './screens/HistoryScreen'
+import LabReportsScreen from './screens/LabReportsScreen'
+import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
 
-type Tab = 'daily' | 'history' | 'meds' | 'dog'
+type Tab = 'daily' | 'history' | 'timeline' | 'labs' | 'dog'
 
 const TABS: { id: Tab; label: string; title: string }[] = [
   { id: 'daily', label: 'Saisie', title: 'Saisie quotidienne' },
   { id: 'history', label: 'Historique', title: 'Historique' },
-  { id: 'meds', label: 'Médicaments', title: 'Médicaments' },
-  { id: 'dog', label: 'Chien', title: 'Fiche du chien' },
+  { id: 'timeline', label: 'Frise', title: 'Frise temporelle' },
+  { id: 'labs', label: 'Labo', title: 'Comptes rendus' },
+  { id: 'dog', label: 'Chien', title: 'Le chien' },
 ]
+
+/** Le lien vétérinaire est une URL du type /?share=<jeton>, lue avant toute authentification. */
+const shareToken = new URLSearchParams(window.location.search).get('share')
+
+// Recharts pèse à lui seul plus que tout le reste de l'application. On le charge
+// seulement quand la frise est ouverte, pour que la saisie quotidienne reste rapide.
+const TimelineScreen = lazy(() => import('./screens/TimelineScreen'))
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -63,6 +73,9 @@ export default function App() {
     void loadDog()
   }, [session])
 
+  // Le vétérinaire ouvre le dossier sans compte : ce cas court-circuite tout le reste.
+  if (shareToken) return <SharedDossierScreen token={shareToken} />
+
   if (!authReady) return <Spinner />
   if (!session) return <AuthScreen />
   if (!dogLoaded) return <Spinner />
@@ -102,13 +115,16 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         {tab === 'daily' && <DailyEntryScreen dogId={dog.id} dogName={dog.name} />}
         {tab === 'history' && <HistoryScreen dogId={dog.id} />}
-        {tab === 'meds' && <MedicationsScreen dogId={dog.id} />}
-        {tab === 'dog' && (
-          <DogFormScreen key={dog.id} dog={dog} ownerId={session.user.id} onSaved={setDog} />
+        {tab === 'timeline' && (
+          <Suspense fallback={<Spinner label="Chargement de la frise…" />}>
+            <TimelineScreen dogId={dog.id} />
+          </Suspense>
         )}
+        {tab === 'labs' && <LabReportsScreen dogId={dog.id} />}
+        {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
       </main>
 
-      <nav className="grid shrink-0 grid-cols-4 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="grid shrink-0 grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
         {TABS.map((item) => (
           <button
             key={item.id}
