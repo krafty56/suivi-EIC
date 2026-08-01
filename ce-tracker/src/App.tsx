@@ -7,7 +7,7 @@ import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
 import DailyEntryScreen from './screens/DailyEntryScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
-import LabReportsScreen from './screens/LabReportsScreen'
+import LabHubScreen from './screens/LabHubScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
 import {
@@ -29,7 +29,7 @@ const TABS: {
   { id: 'daily', label: 'Saisie', title: 'Saisie quotidienne', Icon: IconSaisie },
   { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
   { id: 'timeline', label: 'Frise', title: 'Frise temporelle', Icon: IconFrise },
-  { id: 'labs', label: 'Labo', title: 'Comptes rendus', Icon: IconLabo },
+  { id: 'labs', label: 'Labo', title: 'Labo', Icon: IconLabo },
   { id: 'dog', label: 'Chien', title: 'Le chien', Icon: IconChien },
 ]
 
@@ -132,7 +132,7 @@ export default function App() {
             <TimelineScreen dogId={dog.id} />
           </Suspense>
         )}
-        {tab === 'labs' && <LabReportsScreen dogId={dog.id} />}
+        {tab === 'labs' && <LabHubScreen dogId={dog.id} />}
         {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
       </main>
 
