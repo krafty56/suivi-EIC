@@ -63,8 +63,8 @@ export function IconHistorique(props: Props) {
   )
 }
 
-/** Courbe sur deux axes : la frise. */
-export function IconFrise(props: Props) {
+/** Courbe sur deux axes : les analyses. */
+export function IconAnalyses(props: Props) {
   return (
     <Glyph {...props}>
       <path d="M4 4v14.8A1.2 1.2 0 0 0 5.2 20H20" />

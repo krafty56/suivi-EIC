@@ -13,14 +13,14 @@ import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
 import {
   IconAccueil,
+  IconAnalyses,
   IconChien,
-  IconFrise,
   IconHistorique,
   IconLabo,
   IconSaisie,
 } from './components/icons'
 
-type Tab = 'home' | 'daily' | 'history' | 'timeline' | 'labs' | 'dog'
+type Tab = 'home' | 'daily' | 'history' | 'analyses' | 'labs' | 'dog'
 
 const TABS: {
   id: Tab
@@ -31,7 +31,7 @@ const TABS: {
   { id: 'home', label: 'Accueil', title: 'Aujourd’hui', Icon: IconAccueil },
   { id: 'daily', label: 'Saisir', title: 'Saisir', Icon: IconSaisie },
   { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
-  { id: 'timeline', label: 'Frise', title: 'Frise temporelle', Icon: IconFrise },
+  { id: 'analyses', label: 'Analyses', title: 'Analyses', Icon: IconAnalyses },
   { id: 'labs', label: 'Labo', title: 'Labo', Icon: IconLabo },
   { id: 'dog', label: 'Chien', title: 'Le chien', Icon: IconChien },
 ]
@@ -40,8 +40,8 @@ const TABS: {
 const shareToken = new URLSearchParams(window.location.search).get('share')
 
 // Recharts pèse à lui seul plus que tout le reste de l'application. On le charge
-// seulement quand la frise est ouverte, pour que la saisie quotidienne reste rapide.
-const TimelineScreen = lazy(() => import('./screens/TimelineScreen'))
+// seulement quand les analyses sont ouvertes, pour que la saisie quotidienne reste rapide.
+const AnalysesScreen = lazy(() => import('./screens/AnalysesScreen'))
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -131,9 +131,9 @@ export default function App() {
         {tab === 'home' && <AccueilScreen dog={dog} />}
         {tab === 'daily' && <SaisirHubScreen dog={dog} onDogChange={setDog} />}
         {tab === 'history' && <HistoryHubScreen dogId={dog.id} />}
-        {tab === 'timeline' && (
-          <Suspense fallback={<Spinner label="Chargement de la frise…" />}>
-            <TimelineScreen dogId={dog.id} />
+        {tab === 'analyses' && (
+          <Suspense fallback={<Spinner label="Chargement des analyses…" />}>
+            <AnalysesScreen dogId={dog.id} />
           </Suspense>
         )}
         {tab === 'labs' && <LabHubScreen dogId={dog.id} />}

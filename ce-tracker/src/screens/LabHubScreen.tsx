@@ -9,7 +9,7 @@ const VUES: { id: Vue; label: string }[] = [
 ]
 
 // Recharts pèse lourd : chargé seulement quand on ouvre les paramètres,
-// comme pour la frise.
+// comme pour les analyses.
 const LabValuesScreen = lazy(() => import('./LabValuesScreen'))
 const LabReportsScreen = lazy(() => import('./LabReportsScreen'))
 
