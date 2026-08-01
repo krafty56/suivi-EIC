@@ -12,7 +12,9 @@ Mobile-first : l'écran de référence est un téléphone, le desktop est second
 ## Mise en route
 
 1. Créer un projet sur [supabase.com](https://supabase.com).
-2. Exécuter `supabase/schema.sql` dans le SQL Editor du projet (tables + Row Level Security).
+2. Appliquer le schéma (tables + Row Level Security), au choix :
+   - via l'intégration GitHub (voir « Déploiement du schéma » plus bas) ;
+   - ou en collant `supabase/migrations/20260801000000_initial_schema.sql` dans le SQL Editor.
 3. Copier `.env.example` vers `.env.local` et renseigner l'URL du projet et la clé `anon`.
 4. Installer et lancer :
 
@@ -23,6 +25,18 @@ npm run dev
 
 Si vous ne voulez pas confirmer les adresses email pendant les tests, désactivez
 « Confirm email » dans Authentication → Providers → Email du tableau de bord Supabase.
+
+## Déploiement du schéma
+
+Le schéma vit dans `supabase/migrations/`, sous forme de migrations horodatées.
+L'intégration GitHub de Supabase les applique à la base de production à chaque
+merge sur la branche de production configurée (`main`).
+
+Comme l'application n'est pas à la racine du dépôt, le champ
+« Supabase directory path » du dashboard doit valoir `ce-tracker/supabase`.
+
+La migration initiale est idempotente (`create table if not exists`,
+`drop policy if exists`) : la rejouer sur une base déjà à jour ne casse rien.
 
 ## Ce que couvre cette phase
 
@@ -47,5 +61,5 @@ src/
   lib/types.ts             types du modèle de données
   lib/date.ts              helpers de date
   screens/                 les écrans de l'application
-supabase/schema.sql        schéma Postgres et politiques RLS
+supabase/migrations/       schéma Postgres et politiques RLS
 ```

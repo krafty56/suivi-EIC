@@ -1,0 +1,4 @@
+# Configuration minimale attendue par l'intégration GitHub de Supabase.
+# « project_id » est un identifiant local, il n'a pas besoin de correspondre
+# à la référence du projet hébergé.
+project_id = "ce-tracker"
