@@ -16,6 +16,11 @@ Mobile-first : l'écran de référence est un téléphone, le desktop est second
    - via l'intégration GitHub (voir « Déploiement du schéma » plus bas) ;
    - ou en collant `supabase/migrations/20260801000000_initial_schema.sql` dans le SQL Editor.
 3. Copier `.env.example` vers `.env.local` et renseigner l'URL du projet et la clé `anon`.
+   Sur Vercel, rien à saisir si l'intégration Supabase est branchée : l'application lit
+   aussi `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`, que l'intégration
+   crée elle-même. Les secrets qu'elle installe par ailleurs (`SUPABASE_SERVICE_ROLE_KEY`,
+   `POSTGRES_PASSWORD`, `SUPABASE_JWT_SECRET`) n'ont pas de préfixe exposé et ne sont
+   jamais inclus dans le bundle.
 4. Installer et lancer :
 
 ```bash
