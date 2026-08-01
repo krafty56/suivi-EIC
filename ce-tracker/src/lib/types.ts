@@ -142,6 +142,16 @@ export type ClinicalScore = {
   note: string | null
 }
 
+export type Appointment = {
+  id: string
+  dog_id: string
+  date: string
+  heure: string | null
+  motif: string
+  clinique: string | null
+  note: string | null
+}
+
 /** Ce que renvoie la fonction get_shared_dossier au vétérinaire. */
 export type SharedDossier = {
   dog: Omit<Dog, 'owner_id'>

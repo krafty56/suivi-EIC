@@ -84,6 +84,18 @@ export function IconLabo(props: Props) {
   )
 }
 
+/** Calendrier à spirale : l'agenda des rendez-vous. */
+export function IconAgenda(props: Props) {
+  return (
+    <Glyph {...props}>
+      <rect x="4" y="5.4" width="16" height="14.6" rx="2" />
+      <path d="M4 9.6h16" />
+      <path d="M8 3.5v4M16 3.5v4" />
+      <path d="M8 13.2h2.2M13.8 13.2H16M8 16.6h2.2M13.8 16.6H16" />
+    </Glyph>
+  )
+}
+
 /** Empreinte : la fiche du chien. Pleine, seule forme lisible à cette taille. */
 export function IconChien(props: Props) {
   return (

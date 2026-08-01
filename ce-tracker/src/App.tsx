@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import type { Dog } from './lib/types'
 import AccueilScreen from './screens/AccueilScreen'
+import AgendaScreen from './screens/AgendaScreen'
 import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
@@ -13,6 +14,7 @@ import SharedDossierScreen from './screens/SharedDossierScreen'
 import { ErrorMessage, Spinner } from './components/ui'
 import {
   IconAccueil,
+  IconAgenda,
   IconAnalyses,
   IconChien,
   IconHistorique,
@@ -20,7 +22,7 @@ import {
   IconSaisie,
 } from './components/icons'
 
-type Tab = 'home' | 'daily' | 'history' | 'analyses' | 'labs' | 'dog'
+type Tab = 'home' | 'daily' | 'history' | 'analyses' | 'labs' | 'agenda' | 'dog'
 
 const TABS: {
   id: Tab
@@ -33,6 +35,7 @@ const TABS: {
   { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
   { id: 'analyses', label: 'Analyses', title: 'Analyses', Icon: IconAnalyses },
   { id: 'labs', label: 'Labo', title: 'Labo', Icon: IconLabo },
+  { id: 'agenda', label: 'Agenda', title: 'Agenda', Icon: IconAgenda },
   { id: 'dog', label: 'Chien', title: 'Le chien', Icon: IconChien },
 ]
 
@@ -137,17 +140,18 @@ export default function App() {
           </Suspense>
         )}
         {tab === 'labs' && <LabHubScreen dogId={dog.id} />}
+        {tab === 'agenda' && <AgendaScreen dogId={dog.id} />}
         {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
       </main>
 
-      <nav className="grid shrink-0 grid-cols-6 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="grid shrink-0 grid-cols-7 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
         {TABS.map((item) => (
           <button
             key={item.id}
             type="button"
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
-            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ${
+            className={`flex min-w-0 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ${
               tab === item.id ? 'text-slate-900' : 'text-slate-500'
             }`}
           >
@@ -160,7 +164,7 @@ export default function App() {
             >
               <item.Icon />
             </span>
-            {item.label}
+            <span className="max-w-full truncate px-0.5">{item.label}</span>
           </button>
         ))}
       </nav>

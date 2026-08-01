@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Appetit, DailyEntry, Dog, DogMedication, Energie, SuiviEvent } from '../lib/types'
+import type {
+  Appetit,
+  Appointment,
+  DailyEntry,
+  Dog,
+  DogMedication,
+  Energie,
+  SuiviEvent,
+} from '../lib/types'
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { formatLongDate, formatTime, heureDe, todayISO } from '../lib/date'
@@ -23,6 +31,7 @@ export default function AccueilScreen({ dog }: Props) {
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [entry, setEntry] = useState<DailyEntry | null>(null)
   const [medications, setMedications] = useState<DogMedication[]>([])
+  const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [crisisSheet, setCrisisSheet] = useState(false)
 
@@ -47,8 +56,17 @@ export default function AccueilScreen({ dog }: Props) {
         .eq('dog_id', dog.id)
         .eq('actif', true)
         .order('heure_prise', { ascending: true, nullsFirst: false }),
-    ]).then(([eventsResult, entryResult, medsResult]) => {
-      const dbError = eventsResult.error ?? entryResult.error ?? medsResult.error
+      supabase
+        .from('appointments')
+        .select('*')
+        .eq('dog_id', dog.id)
+        .gte('date', date)
+        .order('date', { ascending: true })
+        .order('heure', { ascending: true, nullsFirst: false })
+        .limit(1)
+        .maybeSingle(),
+    ]).then(([eventsResult, entryResult, medsResult, rdvResult]) => {
+      const dbError = eventsResult.error ?? entryResult.error ?? medsResult.error ?? rdvResult.error
       if (dbError) {
         setError(dbError.message)
         return
@@ -56,6 +74,7 @@ export default function AccueilScreen({ dog }: Props) {
       setEvents(eventsResult.data as SuiviEvent[])
       setEntry(entryResult.data as DailyEntry | null)
       setMedications(medsResult.data as DogMedication[])
+      setProchainRdv(rdvResult.data as Appointment | null)
     })
   }, [dog.id])
 
@@ -77,6 +96,22 @@ export default function AccueilScreen({ dog }: Props) {
         <p className="text-sm text-slate-500 capitalize">{formatLongDate(todayISO())}</p>
         <h2 className="text-xl font-bold text-slate-900">Bonjour, voici la journée de {dog.name}</h2>
       </div>
+
+      {prochainRdv && (
+        <Card>
+          <p className="mb-1 text-sm font-medium text-slate-700">Prochain rendez-vous</p>
+          <p className="font-bold text-slate-900 capitalize">
+            {formatLongDate(prochainRdv.date)}
+            {prochainRdv.heure && (
+              <span className="font-normal text-slate-600"> à {formatTime(prochainRdv.heure)}</span>
+            )}
+          </p>
+          <p className="text-sm text-slate-600">
+            {prochainRdv.motif}
+            {prochainRdv.clinique && <span className="text-slate-500"> · {prochainRdv.clinique}</span>}
+          </p>
+        </Card>
+      )}
 
       <Card>
         <div className="grid grid-cols-4 divide-x divide-slate-200 text-center">
