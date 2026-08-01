@@ -115,7 +115,9 @@ export type LabReport = {
   id: string
   dog_id: string
   date: string
-  storage_path: string
+  /** Absent pour un compte rendu texte seul, importé sans photo source. */
+  storage_path: string | null
+  lab_name: string | null
   note: string | null
   albumine: number | null
 }

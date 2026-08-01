@@ -29,22 +29,26 @@ export default function LabReportsScreen({ dogId }: Props) {
   }, [dogId])
 
   async function remove(report: LabReport) {
-    if (!confirm('Supprimer ce compte rendu et sa photo ?')) return
-    const { data: removed, error: storageError } = await supabase.storage
-      .from(LAB_BUCKET)
-      .remove([report.storage_path])
+    if (!confirm(`Supprimer ce compte rendu${report.storage_path ? ' et sa photo' : ''} ?`)) return
 
-    if (storageError) {
-      setError(storageError.message)
-      return
+    if (report.storage_path) {
+      const { data: removed, error: storageError } = await supabase.storage
+        .from(LAB_BUCKET)
+        .remove([report.storage_path])
+
+      if (storageError) {
+        setError(storageError.message)
+        return
+      }
+      // Storage renvoie la liste des objets réellement supprimés : une liste vide
+      // n'est pas une erreur pour l'API, mais la photo est toujours en ligne. On
+      // s'arrête là plutôt que d'effacer la ligne et de laisser un fichier orphelin.
+      if (!removed || removed.length === 0) {
+        setError('La photo n’a pas pu être supprimée. Le compte rendu est conservé.')
+        return
+      }
     }
-    // Storage renvoie la liste des objets réellement supprimés : une liste vide
-    // n'est pas une erreur pour l'API, mais la photo est toujours en ligne. On
-    // s'arrête là plutôt que d'effacer la ligne et de laisser un fichier orphelin.
-    if (!removed || removed.length === 0) {
-      setError('La photo n’a pas pu être supprimée. Le compte rendu est conservé.')
-      return
-    }
+
     const { error: dbError } = await supabase.from('lab_reports').delete().eq('id', report.id)
     if (dbError) setError(dbError.message)
     else void load()
@@ -58,6 +62,10 @@ export default function LabReportsScreen({ dogId }: Props) {
         Photographiez les comptes rendus de laboratoire pour les garder avec le suivi. Ils
         apparaissent dans le dossier partagé avec le vétérinaire.
       </p>
+      <p className="text-xs text-slate-500">
+        Les comptes rendus importés depuis un autre carnet, sans photo source, apparaissent en
+        texte seul.
+      </p>
 
       <ErrorMessage>{error}</ErrorMessage>
 
@@ -69,23 +77,34 @@ export default function LabReportsScreen({ dogId }: Props) {
 
       {reports.map((report) => (
         <Card key={report.id}>
-          <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
-            {formatLongDate(report.date)}
-          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
+              {formatLongDate(report.date)}
+            </p>
+            {report.lab_name && (
+              <p className="shrink-0 text-xs text-slate-500">{report.lab_name}</p>
+            )}
+          </div>
           {report.albumine !== null && (
             <p className="mt-1 text-sm font-medium text-slate-700 tabular-nums">
               Albuminémie {report.albumine} g/L
             </p>
           )}
           {report.note && <p className="mt-1 text-sm text-slate-600">{report.note}</p>}
-          <button type="button" onClick={() => setZoomed(report)} className="mt-3 block w-full">
-            <img
-              src={labPhotoUrl(report.storage_path)}
-              alt={`Compte rendu du ${report.date}`}
-              loading="lazy"
-              className="max-h-64 w-full rounded-xl object-cover ring-1 ring-slate-200"
-            />
-          </button>
+          {report.storage_path ? (
+            <button type="button" onClick={() => setZoomed(report)} className="mt-3 block w-full">
+              <img
+                src={labPhotoUrl(report.storage_path)}
+                alt={`Compte rendu du ${report.date}`}
+                loading="lazy"
+                className="max-h-64 w-full rounded-xl object-cover ring-1 ring-slate-200"
+              />
+            </button>
+          ) : (
+            !report.note && (
+              <p className="mt-1 text-sm text-slate-400 italic">Aucune photo, aucune note.</p>
+            )
+          )}
           <Button
             type="button"
             variant="danger"
@@ -112,7 +131,7 @@ export default function LabReportsScreen({ dogId }: Props) {
         />
       )}
 
-      {zoomed && (
+      {zoomed && zoomed.storage_path && (
         <Sheet title={formatLongDate(zoomed.date)} onClose={() => setZoomed(null)}>
           <img
             src={labPhotoUrl(zoomed.storage_path)}

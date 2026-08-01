@@ -197,16 +197,21 @@ export default function SharedDossierScreen({ token }: Props) {
               <figure key={report.id}>
                 <figcaption className="text-sm font-medium text-slate-700 first-letter:uppercase">
                   {formatLongDate(report.date)}
+                  {report.lab_name && (
+                    <span className="font-normal text-slate-500"> — {report.lab_name}</span>
+                  )}
                   {report.albumine !== null && (
                     <span className="font-normal text-slate-600"> — albuminémie {report.albumine} g/L</span>
                   )}
-                  {report.note && <span className="font-normal text-slate-500"> — {report.note}</span>}
                 </figcaption>
-                <img
-                  src={labPhotoUrl(report.storage_path)}
-                  alt={`Compte rendu du ${report.date}`}
-                  className="mt-1 w-full rounded-xl ring-1 ring-slate-200"
-                />
+                {report.storage_path && (
+                  <img
+                    src={labPhotoUrl(report.storage_path)}
+                    alt={`Compte rendu du ${report.date}`}
+                    className="mt-1 w-full rounded-xl ring-1 ring-slate-200"
+                  />
+                )}
+                {report.note && <p className="mt-1 text-sm text-slate-700">{report.note}</p>}
               </figure>
             ))}
           </div>
