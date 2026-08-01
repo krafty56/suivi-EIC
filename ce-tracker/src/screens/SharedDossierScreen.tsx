@@ -12,6 +12,7 @@ import {
 import { TOUS_LES_ITEMS } from '../data/scores'
 import { formatLongDate, formatShortDate, formatTime } from '../lib/date'
 import { Button, Card, Spinner } from '../components/ui'
+import Logo from '../components/Logo'
 import { labPhotoUrl } from '../lib/storage'
 
 type Props = { token: string }
@@ -62,6 +63,7 @@ export default function SharedDossierScreen({ token }: Props) {
     <div className="mx-auto max-w-2xl space-y-4 p-4 print:max-w-none print:p-0">
       <header className="flex items-start justify-between gap-4">
         <div>
+          <Logo taille={20} className="mb-2" />
           <h1 className="text-xl font-bold text-slate-900">Dossier de suivi — {dog.name}</h1>
           <p className="text-sm text-slate-600">
             Entéropathie chronique · lecture seule · lien valable jusqu’au{' '}
@@ -221,7 +223,7 @@ export default function SharedDossierScreen({ token }: Props) {
       </Card>
 
       <p className="pb-6 text-center text-xs text-slate-400">
-        Document généré depuis le carnet de bord du propriétaire. Les données sont déclaratives.
+        Document généré depuis appeic, le carnet de bord du propriétaire. Les données sont déclaratives.
       </p>
     </div>
   )

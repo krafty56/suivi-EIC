@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button, ErrorMessage, Field, inputClass } from '../components/ui'
+import Logo from '../components/Logo'
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -35,8 +36,8 @@ export default function AuthScreen() {
 
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center overflow-y-auto px-5 py-10">
-      <h1 className="text-2xl font-bold text-slate-900">Suivi EIC</h1>
-      <p className="mt-1 text-sm text-slate-600">
+      <Logo taille={38} baseline />
+      <p className="mt-4 text-sm text-slate-600">
         Le carnet de bord quotidien de votre chien.
       </p>
 
