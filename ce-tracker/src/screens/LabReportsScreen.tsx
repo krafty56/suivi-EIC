@@ -30,11 +30,19 @@ export default function LabReportsScreen({ dogId }: Props) {
 
   async function remove(report: LabReport) {
     if (!confirm('Supprimer ce compte rendu et sa photo ?')) return
-    const { error: storageError } = await supabase.storage
+    const { data: removed, error: storageError } = await supabase.storage
       .from(LAB_BUCKET)
       .remove([report.storage_path])
+
     if (storageError) {
       setError(storageError.message)
+      return
+    }
+    // Storage renvoie la liste des objets réellement supprimés : une liste vide
+    // n'est pas une erreur pour l'API, mais la photo est toujours en ligne. On
+    // s'arrête là plutôt que d'effacer la ligne et de laisser un fichier orphelin.
+    if (!removed || removed.length === 0) {
+      setError('La photo n’a pas pu être supprimée. Le compte rendu est conservé.')
       return
     }
     const { error: dbError } = await supabase.from('lab_reports').delete().eq('id', report.id)
