@@ -16,6 +16,7 @@ const SUGGESTIONS_MOTIF = [
 export default function AgendaScreen({ dogId }: Props) {
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
+  const [reperesOuverts, setReperesOuverts] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -51,6 +52,61 @@ export default function AgendaScreen({ dogId }: Props) {
       <Button type="button" className="w-full" onClick={() => setAjout('nouveau')}>
         📅 Ajouter un rendez-vous
       </Button>
+
+      <Card>
+        <button
+          type="button"
+          onClick={() => setReperesOuverts((o) => !o)}
+          className="flex w-full items-center justify-between gap-3 text-left"
+        >
+          <p className="text-sm font-semibold text-slate-900">🚨 Quand consulter ?</p>
+          <span className="shrink-0 text-sm font-medium text-brand-700 underline">
+            {reperesOuverts ? 'Masquer' : 'Voir les repères'}
+          </span>
+        </button>
+
+        {reperesOuverts && (
+          <div className="mt-3 space-y-3">
+            <NiveauUrgence titre="Urgence vétérinaire immédiate" tonalite="rouge">
+              <ListeReperes
+                items={[
+                  'Diarrhée abondante ou sanglante d’apparition brutale',
+                  'Effondrement ou léthargie extrême',
+                  'Muqueuses pâles ou blanches',
+                  'Distension abdominale visible',
+                  'Vomissements qui se prolongent au-delà de six heures',
+                  'Difficulté respiratoire visible',
+                ]}
+              />
+            </NiveauUrgence>
+
+            <NiveauUrgence titre="Consultation urgente, si possible le jour même" tonalite="orange">
+              <ListeReperes
+                items={[
+                  'Perte de poids supérieure à 5 % du poids corporel en deux à quatre semaines',
+                  'Apparition soudaine de liquide dans l’abdomen ou d’un gonflement périphérique',
+                  'Refus de s’alimenter pendant plus de 24 heures',
+                  'Selles noires ou goudronneuses de façon persistante',
+                  'Changement brutal et marqué par rapport à un état stable connu',
+                ]}
+              />
+            </NiveauUrgence>
+
+            <NiveauUrgence titre="Consultation non urgente, à programmer" tonalite="calme">
+              <p className="text-sm text-slate-700">
+                Ramollissement progressif des selles persistant plus de cinq à sept jours,
+                réapparition de vomissements intermittents après une période de rémission, perte de
+                poids progressive sur plusieurs semaines, ou changement d’aspect du pelage se
+                développant lentement.
+              </p>
+            </NiveauUrgence>
+
+            <p className="text-xs text-slate-500">
+              Repères indicatifs, à adapter avec votre vétérinaire — ils ne remplacent pas son avis.
+            </p>
+          </div>
+        )}
+      </Card>
 
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
@@ -95,6 +151,43 @@ export default function AgendaScreen({ dogId }: Props) {
         />
       )}
     </div>
+  )
+}
+
+const TONALITES = {
+  rouge: { carte: 'bg-red-50 ring-1 ring-red-200', titre: 'text-red-800' },
+  orange: { carte: 'bg-amber-100', titre: 'text-amber-800' },
+  calme: { carte: 'bg-slate-50 ring-1 ring-brand-200', titre: 'text-slate-800' },
+} as const
+
+function NiveauUrgence({
+  titre,
+  tonalite,
+  children,
+}: {
+  titre: string
+  tonalite: keyof typeof TONALITES
+  children: React.ReactNode
+}) {
+  const styles = TONALITES[tonalite]
+  return (
+    <div>
+      <p className={`mb-1.5 text-sm font-bold ${styles.titre}`}>{titre}</p>
+      <div className={`rounded-2xl px-3 py-2.5 ${styles.carte}`}>{children}</div>
+    </div>
+  )
+}
+
+function ListeReperes({ items }: { items: string[] }) {
+  return (
+    <ul className="space-y-1 text-sm text-slate-800">
+      {items.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span aria-hidden="true">→</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 
