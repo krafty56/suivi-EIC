@@ -50,6 +50,15 @@ export function veilleDe(date: string): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Nombre de jours entiers entre une date YYYY-MM-DD et aujourd'hui. */
+export function joursDepuis(date: string): number {
+  const [y, m, d] = date.split('-').map(Number)
+  const debut = new Date(y, m - 1, d)
+  const [ty, tm, td] = todayISO().split('-').map(Number)
+  const fin = new Date(ty, tm - 1, td)
+  return Math.round((fin.getTime() - debut.getTime()) / 86_400_000)
+}
+
 /** Âge en années révolues à partir d'une date de naissance YYYY-MM-DD :
  * recalculé à la volée plutôt que saisi, il ne se périme jamais. */
 export function calculerAge(dateNaissance: string): number {
