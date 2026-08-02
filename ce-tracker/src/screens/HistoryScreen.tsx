@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Crise, DailyEntry, SuiviEvent } from '../lib/types'
 import { APPETIT_OPTIONS, CHANGEMENT_OPTIONS, ENERGIE_OPTIONS, GRAVITE_OPTIONS } from '../data/catalogs'
 import { formatLongDate } from '../lib/date'
+import { emojiEvenement } from '../data/emoji'
 import { Card, ErrorMessage, Spinner } from '../components/ui'
 
 type Props = { dogId: string }
@@ -97,7 +98,7 @@ export default function HistoryScreen({ dogId }: Props) {
 
           {day.crises.map((crise) => (
             <div key={crise.id} className="mt-2 rounded-xl bg-red-50 px-3 py-2">
-              <p className="text-sm font-bold text-red-800">Crise signalée</p>
+              <p className="text-sm font-bold text-red-800">🚨 Crise signalée</p>
               {crise.changements.length > 0 && (
                 <p className="mt-0.5 text-xs text-red-700">
                   {crise.changements
@@ -111,10 +112,13 @@ export default function HistoryScreen({ dogId }: Props) {
 
           {day.events.length > 0 && (
             <p className="mt-2 text-sm text-slate-700">
-              {[...day.events]
-                .reverse()
-                .map((e) => `${e.nom}${e.intensite !== null ? ` ${e.intensite}` : ''}`)
-                .join(' · ')}
+              {[...day.events].reverse().map((e, i) => (
+                <span key={e.id}>
+                  {i > 0 && ' · '}
+                  {emojiEvenement(e.type, e.nom)} {e.nom}
+                  {e.intensite !== null ? ` ${e.intensite}` : ''}
+                </span>
+              ))}
             </p>
           )}
 

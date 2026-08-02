@@ -28,11 +28,11 @@ type SaisieAutre =
   | { kind: 'poids' }
   | null
 
-const CARTES_AUTRES: { id: 'traitement' | 'activite' | 'note' | 'poids'; label: string }[] = [
-  { id: 'traitement', label: 'Traitement' },
-  { id: 'activite', label: 'Activité' },
-  { id: 'note', label: 'Note libre' },
-  { id: 'poids', label: 'Poids' },
+const CARTES_AUTRES: { id: 'traitement' | 'activite' | 'note' | 'poids'; label: string; emoji: string }[] = [
+  { id: 'traitement', label: 'Traitement', emoji: '💊' },
+  { id: 'activite', label: 'Activité', emoji: '🐾' },
+  { id: 'note', label: 'Note libre', emoji: '📝' },
+  { id: 'poids', label: 'Poids', emoji: '⚖️' },
 ]
 
 export default function SaisirHubScreen({ dog, onDogChange }: Props) {
@@ -202,7 +202,8 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
                 onClick={() => setSaisieAutre({ kind: carte.id } as SaisieAutre)}
                 className="rounded-2xl bg-white px-2 py-4 text-center text-xs font-semibold text-slate-800 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
               >
-                {carte.label}
+                <span className="block text-xl">{carte.emoji}</span>
+                <span className="mt-1 block">{carte.label}</span>
               </button>
             ))}
           </div>
@@ -242,6 +243,9 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
                           onChange={() => toggleMedication(medication.id)}
                           className="h-5 w-5 shrink-0 accent-brand-700"
                         />
+                        <span className="shrink-0 text-xl" aria-hidden="true">
+                          💊
+                        </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium text-slate-900">
                             {medication.nom_medicament}
@@ -295,7 +299,7 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
           className="w-full py-2.5 text-sm"
           onClick={() => setCrisisSheet(true)}
         >
-          Signaler une crise
+          🚨 Signaler une crise
         </Button>
       </div>
 

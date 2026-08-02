@@ -47,7 +47,7 @@ export default function ActiviteSheet({ dogId, date, evenement, onClose, onSaved
   }
 
   return (
-    <Sheet title="Activité" onClose={onClose}>
+    <Sheet title="🐾 Activité" onClose={onClose}>
       <div className="space-y-5">
         <div>
           <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">

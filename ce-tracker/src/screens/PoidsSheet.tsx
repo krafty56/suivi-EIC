@@ -59,7 +59,7 @@ export default function PoidsSheet({ dog, date, onClose, onSaved }: Props) {
   }
 
   return (
-    <Sheet title="Poids" onClose={onClose}>
+    <Sheet title="⚖️ Poids" onClose={onClose}>
       <div className="space-y-5">
         <Field label="Poids (kg)" hint={date !== todayISO() ? `Pour le ${date}` : undefined}>
           <input

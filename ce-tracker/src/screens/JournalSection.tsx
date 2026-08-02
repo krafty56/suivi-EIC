@@ -11,6 +11,7 @@ import {
   resumeDetailsEvenement,
 } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
+import { emojiEvenement } from '../data/emoji'
 import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
@@ -157,7 +158,8 @@ export default function JournalSection({
                 onClick={() => setAjout({ mode: 'nouveau', depart: r })}
                 className="relative rounded-2xl bg-white px-3 py-5 text-center shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
               >
-                <span className="block text-sm font-semibold text-slate-900">{r.nom}</span>
+                <span className="block text-2xl">{emojiEvenement(r.type, r.nom)}</span>
+                <span className="mt-1 block text-sm font-semibold text-slate-900">{r.nom}</span>
                 <span className="mt-0.5 block text-xs text-slate-500">Appui puis validation</span>
                 {compte(r) > 0 && (
                   <span className="absolute top-2 right-2 min-w-6 rounded-full bg-brand-50 px-1.5 py-0.5 text-xs font-bold tabular-nums text-slate-900">
@@ -186,6 +188,9 @@ export default function JournalSection({
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-1 px-2 py-1">
+                  <span className="shrink-0 text-xl" aria-hidden="true">
+                    {emojiEvenement(event.type, event.nom)}
+                  </span>
                   {event.type === 'selle' && event.storage_path && (
                     <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
                       <img
@@ -410,7 +415,12 @@ function AjoutSheet({
             </p>
             <div className="space-y-1.5">
               {ENTREES_HORS_CATALOGUE.map((e) => (
-                <Ligne key={e.nom} nom={e.nom} onClick={() => setChoisi(e)} />
+                <Ligne
+                  key={e.nom}
+                  nom={e.nom}
+                  emoji={emojiEvenement(e.type, e.nom)}
+                  onClick={() => setChoisi(e)}
+                />
               ))}
             </div>
           </div>
@@ -424,6 +434,7 @@ function AjoutSheet({
                   <Ligne
                     key={s.nom}
                     nom={s.nom}
+                    emoji={emojiEvenement('symptome', s.nom)}
                     onClick={() =>
                       setChoisi({
                         type: 'symptome',
@@ -445,7 +456,7 @@ function AjoutSheet({
   const purina = choisi.type === 'selle'
 
   return (
-    <Sheet title={choisi.nom} onClose={onClose}>
+    <Sheet title={`${emojiEvenement(choisi.type, choisi.nom)} ${choisi.nom}`} onClose={onClose}>
       <div className="space-y-5">
         {choisi.echelle && (
           <div>
@@ -639,13 +650,18 @@ function AjoutSheet({
   )
 }
 
-function Ligne({ nom, onClick }: { nom: string; onClick: () => void }) {
+function Ligne({ nom, emoji, onClick }: { nom: string; emoji?: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl bg-slate-50 px-3 py-3 text-left text-sm text-slate-800 hover:bg-slate-100"
+      className="flex w-full items-center gap-2 rounded-xl bg-slate-50 px-3 py-3 text-left text-sm text-slate-800 hover:bg-slate-100"
     >
+      {emoji && (
+        <span aria-hidden="true" className="text-base">
+          {emoji}
+        </span>
+      )}
       {nom}
     </button>
   )
@@ -709,6 +725,7 @@ function ConfigSheet({
               onChange={() => basculer(r)}
               className="h-4 w-4 shrink-0 accent-brand-700"
             />
+            <span aria-hidden="true">{emojiEvenement(r.type, r.nom)}</span>
             <span className="flex-1 text-sm text-slate-800">{r.nom}</span>
             {r.categorie && <span className="text-xs text-slate-500">{r.categorie}</span>}
           </label>

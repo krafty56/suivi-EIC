@@ -42,7 +42,7 @@ export default function CrisisSheet({ dogId, onClose, onSaved }: Props) {
   }
 
   return (
-    <Sheet title="Signaler une crise" onClose={onClose}>
+    <Sheet title="🚨 Signaler une crise" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Date de la crise">
           <input

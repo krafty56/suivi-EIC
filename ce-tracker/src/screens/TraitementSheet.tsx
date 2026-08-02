@@ -63,7 +63,7 @@ export default function TraitementSheet({
   // passée en la rattachant à un autre médicament. Seule l'heure se corrige.
   if (evenement && !medicamentActuel) {
     return (
-      <Sheet title={evenement.nom} onClose={onClose}>
+      <Sheet title={`💊 ${evenement.nom}`} onClose={onClose}>
         <div className="space-y-5">
           <Field label="Heure de prise">
             <input
@@ -85,7 +85,7 @@ export default function TraitementSheet({
 
   if (medications.length === 0 && !evenement) {
     return (
-      <Sheet title="Traitement" onClose={onClose}>
+      <Sheet title="💊 Traitement" onClose={onClose}>
         <p className="text-sm text-slate-500">
           Aucun médicament actif. Configurez le traitement dans l’onglet Chien.
         </p>
@@ -95,7 +95,7 @@ export default function TraitementSheet({
 
   if (!choisi) {
     return (
-      <Sheet title="Quel médicament ?" onClose={onClose}>
+      <Sheet title="💊 Quel médicament ?" onClose={onClose}>
         <div className="space-y-1.5">
           {medications.map((m) => (
             <button
@@ -114,7 +114,7 @@ export default function TraitementSheet({
   }
 
   return (
-    <Sheet title={choisi.nom_medicament} onClose={onClose}>
+    <Sheet title={`💊 ${choisi.nom_medicament}`} onClose={onClose}>
       <div className="space-y-5">
         <Field label="Heure de prise">
           <input

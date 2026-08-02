@@ -46,7 +46,7 @@ export default function NoteLibreSheet({ dogId, date, evenement, onClose, onSave
   }
 
   return (
-    <Sheet title="Note libre" onClose={onClose}>
+    <Sheet title="📝 Note libre" onClose={onClose}>
       <div className="space-y-5">
         <Field label="Note">
           <textarea

@@ -49,7 +49,7 @@ export default function AgendaScreen({ dogId }: Props) {
   return (
     <div className="space-y-4 p-4">
       <Button type="button" className="w-full" onClick={() => setAjout('nouveau')}>
-        Ajouter un rendez-vous
+        📅 Ajouter un rendez-vous
       </Button>
 
       <div>
@@ -115,6 +115,9 @@ function LigneRendezVous({
           onClick={onEdit}
           className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-50"
         >
+          <span className="shrink-0 text-xl" aria-hidden="true">
+            📅
+          </span>
           <div className="min-w-0 flex-1">
             <p className="font-bold text-slate-900 capitalize">{formatLongDate(r.date)}</p>
             <p className="mt-0.5 text-sm text-slate-700">
@@ -178,7 +181,10 @@ function RendezVousSheet({
   }
 
   return (
-    <Sheet title={rendezVous ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'} onClose={onClose}>
+    <Sheet
+      title={`📅 ${rendezVous ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous'}`}
+      onClose={onClose}
+    >
       <div className="space-y-5">
         <div>
           <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">

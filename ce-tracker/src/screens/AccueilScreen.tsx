@@ -11,6 +11,7 @@ import type {
 } from '../lib/types'
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsEvenement } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
+import { emojiEvenement } from '../data/emoji'
 import { formatLongDate, formatTime, heureDe, todayISO } from '../lib/date'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
@@ -101,7 +102,7 @@ export default function AccueilScreen({ dog }: Props) {
 
       {prochainRdv && (
         <Card>
-          <p className="mb-1 text-sm font-medium text-slate-700">Prochain rendez-vous</p>
+          <p className="mb-1 text-sm font-medium text-slate-700">📅 Prochain rendez-vous</p>
           <p className="font-bold text-slate-900 capitalize">
             {formatLongDate(prochainRdv.date)}
             {prochainRdv.heure && (
@@ -141,6 +142,9 @@ export default function AccueilScreen({ dog }: Props) {
                     pris ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
                   }`}
                 >
+                  <span className="shrink-0 text-xl" aria-hidden="true">
+                    💊
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-slate-900">
                       {m.nom_medicament}
@@ -190,6 +194,9 @@ export default function AccueilScreen({ dog }: Props) {
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-3 px-4 py-3">
+                  <span className="shrink-0 text-xl" aria-hidden="true">
+                    {emojiEvenement(event.type, event.nom)}
+                  </span>
                   {event.type === 'selle' && event.storage_path && (
                     <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
                       <img
@@ -228,7 +235,7 @@ export default function AccueilScreen({ dog }: Props) {
         className="w-full py-2.5 text-sm"
         onClick={() => setCrisisSheet(true)}
       >
-        Signaler une crise
+        🚨 Signaler une crise
       </Button>
 
       {crisisSheet && (
