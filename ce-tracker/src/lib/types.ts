@@ -168,6 +168,7 @@ export type SharedDossier = {
   lab_values: LabValue[]
   weights: Weight[]
   scores: ClinicalScore[]
+  food_entries: FoodEntry[]
 }
 
 export type FoodEntry = {
@@ -177,4 +178,5 @@ export type FoodEntry = {
   marque: string | null
   reference: string | null
   quantite_jour: string | null
+  note: string | null
 }

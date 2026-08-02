@@ -43,6 +43,13 @@ export function heureDe(at: string): string {
   return new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Jour précédent une date YYYY-MM-DD. */
+export function veilleDe(date: string): string {
+  const d = new Date(date)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
 /** Âge en années révolues à partir d'une date de naissance YYYY-MM-DD :
  * recalculé à la volée plutôt que saisi, il ne se périme jamais. */
 export function calculerAge(dateNaissance: string): number {

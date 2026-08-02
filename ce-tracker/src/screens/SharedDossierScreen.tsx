@@ -10,7 +10,7 @@ import {
   GRAVITE_OPTIONS,
 } from '../data/catalogs'
 import { TOUS_LES_ITEMS } from '../data/scores'
-import { calculerAge, formatLongDate, formatShortDate, formatTime } from '../lib/date'
+import { calculerAge, formatLongDate, formatShortDate, formatTime, veilleDe } from '../lib/date'
 import { Button, Card, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
 import { labPhotoUrl } from '../lib/storage'
@@ -53,7 +53,7 @@ export default function SharedDossierScreen({ token }: Props) {
 
   if (!dossier) return <Spinner label="Ouverture du dossier…" />
 
-  const { dog, share, medications, entries, crises, events, lab_reports, weights, scores } =
+  const { dog, share, medications, entries, crises, events, lab_reports, weights, scores, food_entries } =
     dossier
   const actifs = medications.filter((m) => m.actif)
   const jourDe = (at: string) => {
@@ -186,6 +186,33 @@ export default function SharedDossierScreen({ token }: Props) {
                 {formatShortDate(mesure.date)} · {mesure.poids} kg
               </li>
             ))}
+          </ul>
+        </Card>
+      )}
+
+      {food_entries.length > 0 && (
+        <Card>
+          <h2 className="mb-2 font-bold text-slate-900">Alimentation</h2>
+          <ul className="space-y-2 text-sm">
+            {food_entries.map((entry, i) => {
+              const actuel = i === 0
+              const fin = actuel ? null : veilleDe(food_entries[i - 1].date_debut)
+              return (
+                <li key={entry.id}>
+                  <p className="font-medium text-slate-800">
+                    {[entry.marque, entry.reference].filter(Boolean).join(' — ') || 'Aliment'}
+                    {actuel && <span className="ml-2 text-xs font-semibold text-brand-700">(actuel)</span>}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {actuel
+                      ? `Depuis le ${formatShortDate(entry.date_debut)}`
+                      : `Du ${formatShortDate(entry.date_debut)} au ${formatShortDate(fin!)}`}
+                    {entry.quantite_jour && ` · ${entry.quantite_jour} / jour`}
+                  </p>
+                  {entry.note && <p className="text-slate-600 italic">{entry.note}</p>}
+                </li>
+              )
+            })}
           </ul>
         </Card>
       )}

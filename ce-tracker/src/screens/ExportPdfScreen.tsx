@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, Dog, DogMedication, SuiviEvent, Weight } from '../lib/types'
+import type { Crise, DailyEntry, Dog, DogMedication, FoodEntry, SuiviEvent, Weight } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
-import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO } from '../lib/date'
+import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO, veilleDe } from '../lib/date'
 import { construireJours } from '../lib/journal'
 import { Button, Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 import JourCard from '../components/JourCard'
@@ -42,6 +42,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
   const [crises, setCrises] = useState<Crise[]>([])
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [poids, setPoids] = useState<Weight[]>([])
+  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 
   function choisirPreset(jours: number) {
@@ -60,7 +61,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
     const finTs = finExclusive.toISOString()
 
     async function load() {
-      const [m, e, c, ev, p] = await Promise.all([
+      const [m, e, c, ev, p, f] = await Promise.all([
         supabase.from('dog_medications').select('*').eq('dog_id', dog.id).order('actif', { ascending: false }),
         supabase
           .from('daily_entries')
@@ -79,8 +80,11 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
           .order('at')
           .limit(5000),
         supabase.from('weights').select('*').eq('dog_id', dog.id).gte('date', debut).lte('date', fin).order('date'),
+        // Non bornée à la période : un régime en cours depuis avant la
+        // fenêtre choisie doit rester visible, comme les traitements actifs.
+        supabase.from('food_entries').select('*').eq('dog_id', dog.id).order('date_debut', { ascending: false }),
       ])
-      const dbError = m.error ?? e.error ?? c.error ?? ev.error ?? p.error
+      const dbError = m.error ?? e.error ?? c.error ?? ev.error ?? p.error ?? f.error
       if (dbError) {
         setError(dbError.message)
         return
@@ -90,6 +94,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
       setCrises(c.data as Crise[])
       setEvents(ev.data as SuiviEvent[])
       setPoids(p.data as Weight[])
+      setFoodEntries(f.data as FoodEntry[])
     }
     void load()
   }, [dog.id, debut, fin])
@@ -229,6 +234,33 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
               </ul>
             )}
           </Card>
+
+          {foodEntries.length > 0 && (
+            <Card className="break-inside-avoid">
+              <h2 className="mb-2 font-bold text-slate-900">Alimentation</h2>
+              <ul className="space-y-2 text-sm">
+                {foodEntries.map((entry, i) => {
+                  const actuel = i === 0
+                  const finRegime = actuel ? null : veilleDe(foodEntries[i - 1].date_debut)
+                  return (
+                    <li key={entry.id}>
+                      <p className="font-medium text-slate-800">
+                        {[entry.marque, entry.reference].filter(Boolean).join(' — ') || 'Aliment'}
+                        {actuel && <span className="ml-2 text-xs font-semibold text-brand-700">(actuel)</span>}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {actuel
+                          ? `Depuis le ${formatShortDate(entry.date_debut)}`
+                          : `Du ${formatShortDate(entry.date_debut)} au ${formatShortDate(finRegime!)}`}
+                        {entry.quantite_jour && ` · ${entry.quantite_jour} / jour`}
+                      </p>
+                      {entry.note && <p className="text-slate-600 italic">{entry.note}</p>}
+                    </li>
+                  )
+                })}
+              </ul>
+            </Card>
+          )}
 
           <div>
             <h2 className="mb-2 px-1 font-bold text-slate-900">Journal chronologique</h2>

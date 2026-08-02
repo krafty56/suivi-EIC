@@ -1,16 +1,18 @@
 import { Suspense, lazy, useState } from 'react'
 import type { Dog } from '../lib/types'
 import { Spinner } from '../components/ui'
+import AlimentationScreen from './AlimentationScreen'
 import DogFormScreen from './DogFormScreen'
 import MedicationsScreen from './MedicationsScreen'
 import NotificationsScreen from './NotificationsScreen'
 import SharingScreen from './SharingScreen'
 
-type Vue = 'fiche' | 'poids' | 'medicaments' | 'partage' | 'notifications'
+type Vue = 'fiche' | 'poids' | 'alimentation' | 'medicaments' | 'partage' | 'notifications'
 
 const VUES: { id: Vue; label: string }[] = [
   { id: 'fiche', label: 'Fiche' },
   { id: 'poids', label: 'Poids' },
+  { id: 'alimentation', label: 'Alimentation' },
   { id: 'medicaments', label: 'Médicaments' },
   { id: 'partage', label: 'Partage' },
   { id: 'notifications', label: 'Rappels' },
@@ -33,7 +35,7 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
 
   return (
     <div>
-      <div className="grid grid-cols-5 gap-2 px-4 pt-4">
+      <div className="grid grid-cols-6 gap-2 px-4 pt-4">
         {VUES.map((item) => (
           <button
             key={item.id}
@@ -59,6 +61,7 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
           <PoidsScreen dog={dog} onDogChange={onSaved} />
         </Suspense>
       )}
+      {vue === 'alimentation' && <AlimentationScreen dogId={dog.id} />}
       {vue === 'medicaments' && <MedicationsScreen dogId={dog.id} />}
       {vue === 'partage' && <SharingScreen dogId={dog.id} />}
       {vue === 'notifications' && <NotificationsScreen dog={dog} />}
