@@ -89,6 +89,52 @@ export const FECAL_SCORES: { score: number; description: string }[] = [
   { score: 7, description: 'Liquide, aqueuse, aucune consistance.' },
 ]
 
+/** Volume de la selle, indépendant du score de Bristol/Purina qui décrit sa
+ * consistance. Stocké dans events.details, pas dans une colonne dédiée. */
+export const TAILLES_SELLE: { value: string; label: string }[] = [
+  { value: 'petit', label: 'Petit' },
+  { value: 'moyen', label: 'Moyen' },
+  { value: 'gros', label: 'Gros' },
+]
+
+export const COULEURS_SELLE: { value: string; label: string }[] = [
+  { value: 'marron', label: 'Marron' },
+  { value: 'marron_clair', label: 'Marron clair' },
+  { value: 'marron_fonce', label: 'Marron foncé' },
+  { value: 'jaune', label: 'Jaune' },
+  { value: 'vert', label: 'Vert' },
+  { value: 'noir', label: 'Noir' },
+  { value: 'rouge', label: 'Rouge' },
+]
+
+/** Signes ponctuels relevés sur une selle, en plus de sa consistance et sa
+ * couleur : chacun est un simple oui/non dans events.details. */
+export const DETAILS_SELLE: { key: string; label: string; description?: string }[] = [
+  { key: 'mucus', label: 'Mucus' },
+  { key: 'sang', label: 'Sang' },
+  { key: 'aliments_non_digeres', label: 'Aliments non digérés' },
+  { key: 'parasites', label: 'Parasites' },
+  {
+    key: 'tenesme',
+    label: 'Ténesme',
+    description: 'Efforts / straining à la défécation — pousse sans résultat ou avec difficulté',
+  },
+  { key: 'urgence', label: 'Urgence à déféquer', description: 'N’a pas pu attendre / accident' },
+]
+
+/** Résumé compact de la taille, la couleur et des signes cochés sur une
+ * selle, pour ne pas rendre invisible ce qu'on vient de saisir. */
+export function resumeDetailsSelle(details: Record<string, unknown>): string | null {
+  const parts: string[] = []
+  const taille = TAILLES_SELLE.find((t) => t.value === details.taille)
+  if (taille) parts.push(taille.label)
+  const couleur = COULEURS_SELLE.find((c) => c.value === details.couleur)
+  if (couleur) parts.push(couleur.label)
+  const signes = DETAILS_SELLE.filter((d) => details[d.key]).map((d) => d.label)
+  if (signes.length > 0) parts.push(signes.join(', '))
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export const APPETIT_OPTIONS: { value: Appetit; label: string }[] = [
   { value: 'faible', label: 'Faible' },
   { value: 'normal', label: 'Normal' },

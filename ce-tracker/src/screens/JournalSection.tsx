@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Dog, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symptomes'
-import { FECAL_SCORES } from '../data/catalogs'
+import {
+  COULEURS_SELLE,
+  DETAILS_SELLE,
+  FECAL_SCORES,
+  TAILLES_SELLE,
+  resumeDetailsSelle,
+} from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
@@ -81,6 +87,7 @@ export default function JournalSection({
     quand: string
     note: string
     storagePath: string | null
+    details: Record<string, unknown>
   }) {
     const valeurs = {
       dog_id: dog.id,
@@ -91,6 +98,7 @@ export default function JournalSection({
       intensite: payload.intensite,
       note: payload.note.trim() || null,
       storage_path: payload.storagePath,
+      details: payload.details,
     }
     const { error: dbError } = payload.id
       ? await supabase.from('events').update(valeurs).eq('id', payload.id)
@@ -193,8 +201,11 @@ export default function JournalSection({
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-slate-900">{event.nom}</span>
-                      <span className="block text-xs text-slate-500">
+                      <span className="block truncate text-xs text-slate-500">
                         {event.categorie ?? LABEL_TYPE_EVENEMENT[event.type]}
+                        {event.type === 'selle' &&
+                          resumeDetailsSelle(event.details) &&
+                          ` · ${resumeDetailsSelle(event.details)}`}
                       </span>
                     </span>
                     <span className="shrink-0 text-sm tabular-nums text-slate-500">
@@ -284,6 +295,7 @@ function AjoutSheet({
     quand: string
     note: string
     storagePath: string | null
+    details: Record<string, unknown>
   }) => void
 }) {
   const evenement = init.mode === 'edition' ? init.evenement : null
@@ -305,6 +317,15 @@ function AjoutSheet({
     evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
   )
   const [note, setNote] = useState(evenement?.note ?? '')
+
+  // Taille, couleur et signes ponctuels n'ont de sens que pour une selle ;
+  // ils vivent dans events.details plutôt que dans des colonnes dédiées.
+  const detailsInitiaux = (evenement?.details ?? {}) as Record<string, unknown>
+  const [taille, setTaille] = useState<string | null>((detailsInitiaux.taille as string) ?? null)
+  const [couleur, setCouleur] = useState<string | null>((detailsInitiaux.couleur as string) ?? null)
+  const [signes, setSignes] = useState<Record<string, boolean>>(
+    Object.fromEntries(DETAILS_SELLE.map((d) => [d.key, Boolean(detailsInitiaux[d.key])])),
+  )
 
   // La photo n'a de sens que pour une selle, pas pour un symptôme constaté
   // ou un repas.
@@ -348,6 +369,15 @@ function AjoutSheet({
       storagePath = null
     }
 
+    const details =
+      choisi.type === 'selle'
+        ? {
+            ...(taille ? { taille } : {}),
+            ...(couleur ? { couleur } : {}),
+            ...Object.fromEntries(Object.entries(signes).filter(([, v]) => v)),
+          }
+        : (evenement?.details ?? {})
+
     onSave({
       id: evenement?.id,
       entree: choisi,
@@ -355,6 +385,7 @@ function AjoutSheet({
       quand,
       note,
       storagePath,
+      details,
     })
   }
 
@@ -436,6 +467,67 @@ function AjoutSheet({
                   ? FECAL_SCORES.find((f) => f.score === intensite)?.description
                   : COTATIONS.find((c) => c.valeur === intensite)?.label}
             </p>
+          </div>
+        )}
+
+        {choisi.type === 'selle' && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Taille (optionnel)</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {TAILLES_SELLE.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  aria-pressed={taille === t.value}
+                  onClick={() => setTaille(taille === t.value ? null : t.value)}
+                  className={`rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+                    taille === t.value
+                      ? 'bg-brand-700 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {choisi.type === 'selle' && (
+          <Field label="Couleur (optionnel)">
+            <select
+              value={couleur ?? ''}
+              onChange={(e) => setCouleur(e.target.value || null)}
+              className={inputClass}
+            >
+              <option value="">—</option>
+              {COULEURS_SELLE.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
+        {choisi.type === 'selle' && (
+          <div className="space-y-3 rounded-xl bg-slate-50 p-3">
+            {DETAILS_SELLE.map((d) => (
+              <label key={d.key} className="flex items-start justify-between gap-3">
+                <span>
+                  <span className="block text-sm text-slate-800">{d.label}</span>
+                  {d.description && (
+                    <span className="block text-xs text-slate-500">{d.description}</span>
+                  )}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={signes[d.key] ?? false}
+                  onChange={(e) => setSignes((s) => ({ ...s, [d.key]: e.target.checked }))}
+                  className="mt-1 h-5 w-5 shrink-0 accent-brand-700"
+                />
+              </label>
+            ))}
           </div>
         )}
 
