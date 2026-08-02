@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import type { Dog } from '../lib/types'
 import HistoryScreen from './HistoryScreen'
+import PhotosScreen from './PhotosScreen'
 import ScoresScreen from './ScoresScreen'
 
-type Vue = 'journal' | 'scores'
+type Vue = 'journal' | 'scores' | 'photos'
 
 const VUES: { id: Vue; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'scores', label: 'Scores' },
+  { id: 'photos', label: 'Photos' },
 ]
 
 type Props = { dog: Dog; onExport: () => void }
@@ -19,14 +21,14 @@ export default function HistoryHubScreen({ dog, onExport }: Props) {
   return (
     <div>
       <div className="flex items-center gap-2 px-4 pt-4">
-        <div className="grid flex-1 grid-cols-2 gap-2">
+        <div className="grid flex-1 grid-cols-3 gap-2">
           {VUES.map((item) => (
             <button
               key={item.id}
               type="button"
               aria-pressed={vue === item.id}
               onClick={() => setVue(item.id)}
-              className={`rounded-xl py-2 text-sm font-semibold transition-colors ${
+              className={`min-w-0 truncate rounded-xl py-2 text-sm font-semibold transition-colors ${
                 vue === item.id
                   ? 'bg-brand-700 text-white'
                   : 'bg-white text-slate-700 ring-1 ring-slate-200'
@@ -45,7 +47,9 @@ export default function HistoryHubScreen({ dog, onExport }: Props) {
         </button>
       </div>
 
-      {vue === 'journal' ? <HistoryScreen dogId={dog.id} /> : <ScoresScreen dogId={dog.id} />}
+      {vue === 'journal' && <HistoryScreen dogId={dog.id} />}
+      {vue === 'scores' && <ScoresScreen dogId={dog.id} />}
+      {vue === 'photos' && <PhotosScreen dogId={dog.id} />}
     </div>
   )
 }
