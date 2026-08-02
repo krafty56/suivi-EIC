@@ -10,7 +10,7 @@ const EMOJI_SYMPTOME: Record<string, string> = {
   Régurgitation: '🤢',
   'Position de prière': '🙏',
   Déglutitions: '😮‍💨',
-  Reflux: '🔄',
+  Reflux: '🤢',
   Vomissement: '🤮',
   'Nausée (bâillements, léchage babines)': '🥱',
   'Diarrhée franche': '💦',

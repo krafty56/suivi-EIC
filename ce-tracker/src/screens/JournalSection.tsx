@@ -188,18 +188,9 @@ export default function JournalSection({
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-1 px-2 py-1">
-                  <span className="shrink-0 text-xl" aria-hidden="true">
+                  <span className="shrink-0 pl-1 text-xl" aria-hidden="true">
                     {emojiEvenement(event.type, event.nom)}
                   </span>
-                  {event.type === 'selle' && event.storage_path && (
-                    <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
-                      <img
-                        src={stoolPhotoUrl(event.storage_path)}
-                        alt=""
-                        className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200"
-                      />
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => ouvrirEdition(event)}
@@ -216,12 +207,25 @@ export default function JournalSection({
                     <span className="shrink-0 text-sm tabular-nums text-slate-500">
                       {heureDe(event.at)}
                     </span>
-                    {event.intensite !== null && (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
-                        {event.intensite}
-                      </span>
-                    )}
+                    <span className="flex w-9 shrink-0 justify-center">
+                      {event.intensite !== null && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
+                          {event.intensite}
+                        </span>
+                      )}
+                    </span>
                   </button>
+                  <span className="w-8 shrink-0">
+                    {event.type === 'selle' && event.storage_path && (
+                      <button type="button" onClick={() => setZoomed(event)}>
+                        <img
+                          src={stoolPhotoUrl(event.storage_path)}
+                          alt=""
+                          className="h-8 w-8 rounded-lg object-cover ring-1 ring-slate-200"
+                        />
+                      </button>
+                    )}
+                  </span>
                   <button
                     type="button"
                     aria-label={`Supprimer ${event.nom} de ${heureDe(event.at)}`}

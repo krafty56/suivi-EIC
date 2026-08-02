@@ -219,19 +219,10 @@ export default function AccueilScreen({ dog }: Props) {
           ) : (
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
-                <li key={event.id} className="flex items-center gap-3 px-4 py-3">
+                <li key={event.id} className="flex items-center gap-2 px-4 py-3">
                   <span className="shrink-0 text-xl" aria-hidden="true">
                     {emojiEvenement(event.type, event.nom)}
                   </span>
-                  {event.type === 'selle' && event.storage_path && (
-                    <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
-                      <img
-                        src={stoolPhotoUrl(event.storage_path)}
-                        alt=""
-                        className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200"
-                      />
-                    </button>
-                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-slate-900">{event.nom}</span>
                     <span className="block truncate text-xs text-slate-500">
@@ -243,11 +234,24 @@ export default function AccueilScreen({ dog }: Props) {
                   <span className="shrink-0 text-sm tabular-nums text-slate-500">
                     {heureDe(event.at)}
                   </span>
-                  {event.intensite !== null && (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
-                      {event.intensite}
-                    </span>
-                  )}
+                  <span className="flex w-9 shrink-0 justify-center">
+                    {event.intensite !== null && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
+                        {event.intensite}
+                      </span>
+                    )}
+                  </span>
+                  <span className="w-8 shrink-0">
+                    {event.type === 'selle' && event.storage_path && (
+                      <button type="button" onClick={() => setZoomed(event)}>
+                        <img
+                          src={stoolPhotoUrl(event.storage_path)}
+                          alt=""
+                          className="h-8 w-8 rounded-lg object-cover ring-1 ring-slate-200"
+                        />
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
