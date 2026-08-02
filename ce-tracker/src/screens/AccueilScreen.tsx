@@ -33,6 +33,7 @@ export default function AccueilScreen({ dog }: Props) {
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [entry, setEntry] = useState<DailyEntry | null>(null)
   const [medications, setMedications] = useState<DogMedication[]>([])
+  const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [crisisSheet, setCrisisSheet] = useState(false)
@@ -44,41 +45,65 @@ export default function AccueilScreen({ dog }: Props) {
     const fin = new Date(debut)
     fin.setDate(fin.getDate() + 1)
 
-    void Promise.all([
-      supabase
-        .from('events')
-        .select('*')
-        .eq('dog_id', dog.id)
-        .gte('at', debut.toISOString())
-        .lt('at', fin.toISOString())
-        .order('at', { ascending: false }),
-      supabase.from('daily_entries').select('*').eq('dog_id', dog.id).eq('date', date).maybeSingle(),
-      supabase
-        .from('dog_medications')
-        .select('*')
-        .eq('dog_id', dog.id)
-        .eq('actif', true)
-        .order('heure_prise', { ascending: true, nullsFirst: false }),
-      supabase
-        .from('appointments')
-        .select('*')
-        .eq('dog_id', dog.id)
-        .gte('date', date)
-        .order('date', { ascending: true })
-        .order('heure', { ascending: true, nullsFirst: false })
-        .limit(1)
-        .maybeSingle(),
-    ]).then(([eventsResult, entryResult, medsResult, rdvResult]) => {
+    async function charger() {
+      const [eventsResult, entryResult, medsResult, rdvResult] = await Promise.all([
+        supabase
+          .from('events')
+          .select('*')
+          .eq('dog_id', dog.id)
+          .gte('at', debut.toISOString())
+          .lt('at', fin.toISOString())
+          .order('at', { ascending: false }),
+        supabase.from('daily_entries').select('*').eq('dog_id', dog.id).eq('date', date).maybeSingle(),
+        supabase
+          .from('dog_medications')
+          .select('*')
+          .eq('dog_id', dog.id)
+          .eq('actif', true)
+          .order('heure_prise', { ascending: true, nullsFirst: false }),
+        supabase
+          .from('appointments')
+          .select('*')
+          .eq('dog_id', dog.id)
+          .gte('date', date)
+          .order('date', { ascending: true })
+          .order('heure', { ascending: true, nullsFirst: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+
       const dbError = eventsResult.error ?? entryResult.error ?? medsResult.error ?? rdvResult.error
       if (dbError) {
         setError(dbError.message)
         return
       }
       setEvents(eventsResult.data as SuiviEvent[])
-      setEntry(entryResult.data as DailyEntry | null)
+      const dailyEntry = entryResult.data as DailyEntry | null
+      setEntry(dailyEntry)
       setMedications(medsResult.data as DogMedication[])
       setProchainRdv(rdvResult.data as Appointment | null)
-    })
+
+      // La checklist du jour (Saisir) et les événements traitement horodatés
+      // sont deux façons d'enregistrer une prise : les deux comptent ici.
+      if (dailyEntry) {
+        const { data: logs, error: logsError } = await supabase
+          .from('medication_logs')
+          .select('dog_medication_id, pris')
+          .eq('daily_entry_id', dailyEntry.id)
+
+        if (logsError) setError(logsError.message)
+        else
+          setTakenMeds(
+            new Set(
+              (logs ?? []).filter((log) => log.pris).map((log) => log.dog_medication_id as string),
+            ),
+          )
+      } else {
+        setTakenMeds(new Set())
+      }
+    }
+
+    void charger()
   }, [dog.id])
 
   if (error) return <div className="p-4"><ErrorMessage>{error}</ErrorMessage></div>
@@ -91,6 +116,7 @@ export default function AccueilScreen({ dog }: Props) {
   }))
 
   const priseAujourdhui = (medicationId: string) =>
+    takenMeds.has(medicationId) ||
     events.some((e) => e.type === 'traitement' && e.dog_medication_id === medicationId)
 
   return (
@@ -160,7 +186,7 @@ export default function AccueilScreen({ dog }: Props) {
                       pris ? 'text-brand-700' : 'text-slate-400'
                     }`}
                   >
-                    {pris ? 'Donné' : 'À donner'}
+                    {pris ? '✓ Donné' : 'À donner'}
                   </span>
                 </div>
               )
