@@ -37,14 +37,14 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
 
   return (
     <div>
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pt-4 pb-1">
+      <div className="flex flex-wrap gap-2 px-4 pt-4 pb-1">
         {VUES.map((item) => (
           <button
             key={item.id}
             type="button"
             aria-pressed={vue === item.id}
             onClick={() => setVue(item.id)}
-            className={`shrink-0 rounded-xl px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`rounded-xl px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${
               vue === item.id
                 ? 'bg-brand-700 text-white'
                 : 'bg-white text-slate-700 ring-1 ring-slate-200'
