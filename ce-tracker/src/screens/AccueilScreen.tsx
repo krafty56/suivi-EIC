@@ -28,6 +28,13 @@ function libelleEnergie(v: Energie | null): string | null {
   return v ? (ENERGIE_OPTIONS.find((o) => o.value === v)?.label ?? v) : null
 }
 
+/** Pluriel d'un libellé de type d'événement pour le résumé du jour : un mot
+ * qui finit déjà en s/x/z (« Repas ») ne prend pas de s supplémentaire. */
+function pluriel(label: string): string {
+  const mot = label.toLowerCase()
+  return /[sxz]$/.test(mot) ? mot : `${mot}s`
+}
+
 /** Le récapitulatif du jour, en lecture seule : ce qui a déjà été saisi.
  * La correction ou l'ajout d'une entrée se fait dans l'onglet Saisir. */
 export default function AccueilScreen({ dog }: Props) {
@@ -196,7 +203,7 @@ export default function AccueilScreen({ dog }: Props) {
           {comptes.map((c) => (
             <div key={c.type}>
               <p className="text-xl font-bold tabular-nums text-slate-900">{c.compte}</p>
-              <p className="text-xs text-slate-500">{c.label.toLowerCase()}s</p>
+              <p className="text-xs text-slate-500">{pluriel(c.label)}</p>
             </div>
           ))}
         </div>
