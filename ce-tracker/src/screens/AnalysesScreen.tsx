@@ -38,6 +38,28 @@ function reculerDe(date: string, jours: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+// L'onglet est démonté à chaque changement d'onglet (rendu conditionnel dans
+// App.tsx) : sans persistance, la période choisie serait perdue et
+// reviendrait à 30 j par défaut à chaque retour sur Analyses.
+const STOCKAGE_CLE = 'appeic.analyses.periode'
+
+function chargerPeriode(): { presetActif: number | null; debut: string; fin: string } {
+  try {
+    const brut = localStorage.getItem(STOCKAGE_CLE)
+    const donnees = brut ? JSON.parse(brut) : null
+    if (donnees && typeof donnees.debut === 'string' && typeof donnees.fin === 'string') {
+      return {
+        presetActif: typeof donnees.presetActif === 'number' ? donnees.presetActif : null,
+        debut: donnees.debut,
+        fin: donnees.fin,
+      }
+    }
+  } catch {
+    // Stockage indisponible ou corrompu : on repart des valeurs par défaut.
+  }
+  return { presetActif: 30, debut: reculerDe(todayISO(), 29), fin: todayISO() }
+}
+
 /** Tous les jours entre deux dates incluses, y compris ceux sans donnée :
  * les creux restent visibles plutôt que d'être passés sous silence. */
 function joursEntre(debut: string, fin: string): Jour[] {
@@ -54,14 +76,22 @@ function joursEntre(debut: string, fin: string): Jour[] {
 }
 
 export default function AnalysesScreen({ dogId }: Props) {
-  const [fin, setFin] = useState(todayISO())
-  const [debut, setDebut] = useState(reculerDe(todayISO(), 29))
-  const [presetActif, setPresetActif] = useState<number | null>(30)
+  const [fin, setFin] = useState(() => chargerPeriode().fin)
+  const [debut, setDebut] = useState(() => chargerPeriode().debut)
+  const [presetActif, setPresetActif] = useState<number | null>(() => chargerPeriode().presetActif)
 
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [crises, setCrises] = useState<Crise[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STOCKAGE_CLE, JSON.stringify({ presetActif, debut, fin }))
+    } catch {
+      // Navigation privée ou quota plein : la période ne persiste pas, sans bloquer l'app.
+    }
+  }, [presetActif, debut, fin])
 
   useEffect(() => {
     if (debut > fin) return
@@ -86,13 +116,16 @@ export default function AnalysesScreen({ dogId }: Props) {
           .gte('date', debut)
           .lte('date', fin)
           .order('date'),
+        // Chevauchement avec la fenêtre plutôt qu'une simple borne sur
+        // date_debut : une crise commencée avant mais toujours en cours (ou
+        // résolue après le début de la fenêtre) doit rester visible.
         supabase
           .from('crises')
           .select('*')
           .eq('dog_id', dogId)
-          .gte('date', debut)
-          .lte('date', fin)
-          .order('date'),
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
         supabase
           .from('events')
           .select('*')
@@ -134,12 +167,14 @@ export default function AnalysesScreen({ dogId }: Props) {
   }, [events, fenetre])
 
   const crisesPoints = useMemo(() => {
-    const parJour = new Map<string, number>()
-    for (const crise of crises) {
-      parJour.set(crise.date, (parJour.get(crise.date) ?? 0) + 1)
-    }
-    return fenetre.map((j) => ({ ...j, compte: parJour.get(j.date) ?? 0 }))
-  }, [crises, fenetre])
+    // Une crise dure de date_debut à date_fin (ou jusqu'à aujourd'hui si
+    // encore en cours) : chaque jour de l'épisode compte comme « en crise »,
+    // pas seulement le jour où elle a été signalée.
+    return fenetre.map((j) => ({
+      ...j,
+      compte: crises.some((c) => j.date >= c.date_debut && j.date <= (c.date_fin ?? fin)) ? 1 : 0,
+    }))
+  }, [crises, fenetre, fin])
 
   const scorePoints = useMemo(() => {
     const parDateEntry = new Map(entries?.map((entry) => [entry.date, entry]) ?? [])
