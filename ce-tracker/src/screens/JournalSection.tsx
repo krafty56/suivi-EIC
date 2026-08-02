@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Dog, Raccourci, SuiviEvent } from '../lib/types'
+import type { Appetit, Dog, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import {
+  APPETIT_OPTIONS,
   COULEURS_SELLE,
   DETAILS_SELLE,
   FECAL_SCORES,
   TAILLES_SELLE,
-  resumeDetailsSelle,
+  resumeDetailsEvenement,
 } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
-import { Button, Card, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
+import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
 const ENTREES_HORS_CATALOGUE: Raccourci[] = [
@@ -203,9 +204,8 @@ export default function JournalSection({
                       <span className="block truncate font-medium text-slate-900">{event.nom}</span>
                       <span className="block truncate text-xs text-slate-500">
                         {event.categorie ?? LABEL_TYPE_EVENEMENT[event.type]}
-                        {event.type === 'selle' &&
-                          resumeDetailsSelle(event.details) &&
-                          ` · ${resumeDetailsSelle(event.details)}`}
+                        {resumeDetailsEvenement(event.type, event.details) &&
+                          ` · ${resumeDetailsEvenement(event.type, event.details)}`}
                       </span>
                     </span>
                     <span className="shrink-0 text-sm tabular-nums text-slate-500">
@@ -327,6 +327,15 @@ function AjoutSheet({
     Object.fromEntries(DETAILS_SELLE.map((d) => [d.key, Boolean(detailsInitiaux[d.key])])),
   )
 
+  // L'appétit n'a de sens que pour un repas. Les repas importés portent
+  // l'ancien barème numérique (1 à 3) de l'app d'origine.
+  const appetiteInitial = detailsInitiaux.appetite
+  const [appetitRepas, setAppetitRepas] = useState<Appetit | null>(
+    typeof appetiteInitial === 'number'
+      ? (({ 1: 'faible', 2: 'normal', 3: 'bon' } as Record<number, Appetit>)[appetiteInitial] ?? null)
+      : ((appetiteInitial as Appetit) ?? null),
+  )
+
   // La photo n'a de sens que pour une selle, pas pour un symptôme constaté
   // ou un repas.
   const [fichierPhoto, setFichierPhoto] = useState<File | null>(null)
@@ -376,7 +385,9 @@ function AjoutSheet({
             ...(couleur ? { couleur } : {}),
             ...Object.fromEntries(Object.entries(signes).filter(([, v]) => v)),
           }
-        : (evenement?.details ?? {})
+        : choisi.type === 'repas'
+          ? { ...(appetitRepas ? { appetite: appetitRepas } : {}) }
+          : (evenement?.details ?? {})
 
     onSave({
       id: evenement?.id,
@@ -467,6 +478,17 @@ function AjoutSheet({
                   ? FECAL_SCORES.find((f) => f.score === intensite)?.description
                   : COTATIONS.find((c) => c.valeur === intensite)?.label}
             </p>
+          </div>
+        )}
+
+        {choisi.type === 'repas' && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Appétit (optionnel)</p>
+            <SegmentedControl
+              options={APPETIT_OPTIONS}
+              value={appetitRepas}
+              onChange={setAppetitRepas}
+            />
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import type { Appetit, Changement, Energie, Gravite } from '../lib/types'
+import type { Appetit, Changement, Energie, EventType, Gravite } from '../lib/types'
 
 /** Catalogue de médicaments, fixe pour cette phase. */
 export const MEDICATION_CATALOG: { categorie: string; medicaments: string[] }[] = [
@@ -140,6 +140,24 @@ export const APPETIT_OPTIONS: { value: Appetit; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'bon', label: 'Bon' },
 ]
+
+/** Résumé compact de l'appétit noté sur un repas. Les repas importés portent
+ * l'ancien barème numérique de l'app d'origine (1 à 3) ; les nouveaux
+ * utilisent directement la valeur d'Appetit — les deux sont acceptés. */
+export function resumeDetailsRepas(details: Record<string, unknown>): string | null {
+  const brut = details.appetite
+  if (typeof brut === 'number') {
+    return ({ 1: 'Faible', 2: 'Normal', 3: 'Bon' } as Record<number, string>)[brut] ?? null
+  }
+  return APPETIT_OPTIONS.find((o) => o.value === brut)?.label ?? null
+}
+
+/** Résumé compact selon le type d'événement, pour les listes d'entrées. */
+export function resumeDetailsEvenement(type: EventType, details: Record<string, unknown>): string | null {
+  if (type === 'selle') return resumeDetailsSelle(details)
+  if (type === 'repas') return resumeDetailsRepas(details)
+  return null
+}
 
 export const ENERGIE_OPTIONS: { value: Energie; label: string }[] = [
   { value: 'faible', label: 'Faible' },

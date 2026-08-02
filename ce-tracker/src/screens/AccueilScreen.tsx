@@ -9,7 +9,7 @@ import type {
   Energie,
   SuiviEvent,
 } from '../lib/types'
-import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsSelle } from '../data/catalogs'
+import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsEvenement } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { formatLongDate, formatTime, heureDe, todayISO } from '../lib/date'
 import { stoolPhotoUrl } from '../lib/storage'
@@ -203,9 +203,8 @@ export default function AccueilScreen({ dog }: Props) {
                     <span className="block truncate font-medium text-slate-900">{event.nom}</span>
                     <span className="block truncate text-xs text-slate-500">
                       {event.categorie ?? LABEL_TYPE_EVENEMENT[event.type]}
-                      {event.type === 'selle' &&
-                        resumeDetailsSelle(event.details) &&
-                        ` · ${resumeDetailsSelle(event.details)}`}
+                      {resumeDetailsEvenement(event.type, event.details) &&
+                        ` · ${resumeDetailsEvenement(event.type, event.details)}`}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm tabular-nums text-slate-500">
