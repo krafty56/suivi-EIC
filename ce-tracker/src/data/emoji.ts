@@ -39,6 +39,8 @@ const EMOJI_ACTIVITE: Record<string, string> = {
   Promenade: '🚶',
   'Sortie jardin': '🌳',
   'Trajet voiture': '🚗',
+  Friandise: '🦴',
+  Mastication: '🦷',
 }
 
 /** Emoji par défaut d'un type d'événement, utilisé quand le nom précis n'a

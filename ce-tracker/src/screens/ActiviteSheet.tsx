@@ -12,7 +12,7 @@ type Props = {
   onSaved: () => void
 }
 
-const SUGGESTIONS = ['Promenade', 'Sortie jardin', 'Trajet voiture']
+const SUGGESTIONS = ['Promenade', 'Sortie jardin', 'Trajet voiture', 'Friandise', 'Mastication']
 
 /** Ce qui entoure le chien plutôt que ce qu'il présente : utile pour
  * relier plus tard une poussée de symptômes à un contexte. Sert aussi à
