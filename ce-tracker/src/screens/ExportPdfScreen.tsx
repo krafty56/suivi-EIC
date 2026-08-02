@@ -4,7 +4,7 @@ import type { Crise, DailyEntry, Dog, DogMedication, SuiviEvent, Weight } from '
 import { BCS_SCALE } from '../data/catalogs'
 import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO } from '../lib/date'
 import { construireJours } from '../lib/journal'
-import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
+import { Button, Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 import JourCard from '../components/JourCard'
 import Logo from '../components/Logo'
 
@@ -33,7 +33,10 @@ function reculerDe(date: string, jours: number): string {
  * document plutôt que le seul écran visible, comme pour le dossier partagé
  * au vétérinaire. */
 export default function ExportPdfScreen({ dog, onClose }: Props) {
-  const [periodeJours, setPeriodeJours] = useState(90)
+  const [fin, setFin] = useState(todayISO())
+  const [debut, setDebut] = useState(reculerDe(todayISO(), 89))
+  const [presetActif, setPresetActif] = useState<number | null>(90)
+
   const [medications, setMedications] = useState<DogMedication[]>([])
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [crises, setCrises] = useState<Crise[]>([])
@@ -41,10 +44,14 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
   const [poids, setPoids] = useState<Weight[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const fin = todayISO()
-  const debut = reculerDe(fin, periodeJours - 1)
+  function choisirPreset(jours: number) {
+    setPresetActif(jours)
+    setFin(todayISO())
+    setDebut(reculerDe(todayISO(), jours - 1))
+  }
 
   useEffect(() => {
+    if (debut > fin) return
     setEntries(null)
     const debutEvenements = reculerDe(debut, 1)
     const debutTs = new Date(`${debutEvenements}T00:00:00`).toISOString()
@@ -85,7 +92,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
       setPoids(p.data as Weight[])
     }
     void load()
-  }, [dog.id, periodeJours, debut, fin])
+  }, [dog.id, debut, fin])
 
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
@@ -94,113 +101,155 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
     [entries, crises, events, poids, debut, fin],
   )
 
-  if (entries === null) return <Spinner label="Préparation du journal…" />
-
   const actifs = medications.filter((m) => m.actif)
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 print:max-w-none print:p-0">
-      <header className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm font-medium text-slate-500 hover:text-slate-800"
-        >
-          ← Retour
-        </button>
-        <div className="flex items-center gap-2">
-          {PERIODES.map((periode) => (
-            <button
-              key={periode.jours}
-              type="button"
-              aria-pressed={periodeJours === periode.jours}
-              onClick={() => setPeriodeJours(periode.jours)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                periodeJours === periode.jours
-                  ? 'bg-brand-700 text-white'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-200'
-              }`}
-            >
-              {periode.label}
-            </button>
-          ))}
-          <Button type="button" variant="secondary" className="py-2 text-sm" onClick={() => window.print()}>
-            Imprimer / PDF
-          </Button>
+      <header className="space-y-3 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-medium text-slate-500 hover:text-slate-800"
+          >
+            ← Retour
+          </button>
+          <div className="flex items-center gap-2">
+            {PERIODES.map((periode) => (
+              <button
+                key={periode.jours}
+                type="button"
+                aria-pressed={presetActif === periode.jours}
+                onClick={() => choisirPreset(periode.jours)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  presetActif === periode.jours
+                    ? 'bg-brand-700 text-white'
+                    : 'bg-white text-slate-700 ring-1 ring-slate-200'
+                }`}
+              >
+                {periode.label}
+              </button>
+            ))}
+            <Button type="button" variant="secondary" className="py-2 text-sm" onClick={() => window.print()}>
+              Imprimer / PDF
+            </Button>
+          </div>
         </div>
+
+        <Card>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Du">
+              <input
+                type="date"
+                value={debut}
+                max={fin}
+                onChange={(e) => {
+                  setDebut(e.target.value)
+                  setPresetActif(null)
+                }}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Au">
+              <input
+                type="date"
+                value={fin}
+                min={debut}
+                max={todayISO()}
+                onChange={(e) => {
+                  setFin(e.target.value)
+                  setPresetActif(null)
+                }}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        </Card>
       </header>
 
       <ErrorMessage>{error}</ErrorMessage>
 
-      <div>
-        <Logo taille={20} className="mb-2" />
-        <h1 className="text-xl font-bold text-slate-900">{dog.name} — Journal de suivi</h1>
-        <p className="text-sm text-slate-600">
-          Entéropathie chronique · du {formatShortDate(debut)} au {formatShortDate(fin)} · généré le{' '}
-          {formatShortDate(todayISO())}
-        </p>
-      </div>
-
-      <Card className="break-inside-avoid">
-        <h2 className="mb-2 font-bold text-slate-900">Fiche</h2>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-          <Ligne terme="Race" valeur={dog.race} />
-          <Ligne terme="Âge" valeur={dog.date_naissance ? `${calculerAge(dog.date_naissance)} ans` : null} />
-          <Ligne terme="Puce / tatouage" valeur={dog.identification} />
-          <Ligne terme="Poids actuel" valeur={dog.poids_actuel !== null ? `${dog.poids_actuel} kg` : null} />
-          <Ligne terme="Poids idéal" valeur={dog.poids_ideal !== null ? `${dog.poids_ideal} kg` : null} />
-          <Ligne
-            terme="BCS"
-            valeur={
-              dog.bcs !== null ? `${dog.bcs}/9 — ${BCS_SCALE.find((b) => b.value === dog.bcs)?.label}` : null
-            }
-          />
-          <Ligne
-            terme="Diagnostic"
-            valeur={dog.date_diagnostic ? formatLongDate(dog.date_diagnostic) : null}
-          />
-        </dl>
-      </Card>
-
-      <Card className="break-inside-avoid">
-        <h2 className="mb-2 font-bold text-slate-900">Traitements en cours</h2>
-        {actifs.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucun médicament actif.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {actifs.map((m) => (
-              <li key={m.id} className="flex justify-between gap-3">
-                <span className="text-slate-800">
-                  {m.nom_medicament}
-                  {m.dose && <span className="text-slate-500"> · {m.dose}</span>}
-                </span>
-                {m.heure_prise && (
-                  <span className="shrink-0 tabular-nums text-slate-500">{formatTime(m.heure_prise)}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <div>
-        <h2 className="mb-2 px-1 font-bold text-slate-900">Journal chronologique</h2>
-        {jours.length === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-500">Aucune saisie sur cette période.</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {jours.map((jour) => (
-              <JourCard key={jour.date} jour={jour} repas={repasEvents} />
-            ))}
+      {debut > fin ? (
+        <Card>
+          <p className="py-4 text-center text-sm text-slate-500">
+            La date de début doit précéder la date de fin.
+          </p>
+        </Card>
+      ) : entries === null ? (
+        <Spinner label="Préparation du journal…" />
+      ) : (
+        <>
+          <div>
+            <Logo taille={20} className="mb-2" />
+            <h1 className="text-xl font-bold text-slate-900">{dog.name} — Journal de suivi</h1>
+            <p className="text-sm text-slate-600">
+              Entéropathie chronique · du {formatShortDate(debut)} au {formatShortDate(fin)} · généré le{' '}
+              {formatShortDate(todayISO())}
+            </p>
           </div>
-        )}
-      </div>
 
-      <p className="pb-6 text-center text-xs text-slate-400 print:hidden">
-        Document généré depuis appeic. Les données sont déclaratives.
-      </p>
+          <Card className="break-inside-avoid">
+            <h2 className="mb-2 font-bold text-slate-900">Fiche</h2>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+              <Ligne terme="Race" valeur={dog.race} />
+              <Ligne terme="Âge" valeur={dog.date_naissance ? `${calculerAge(dog.date_naissance)} ans` : null} />
+              <Ligne terme="Puce / tatouage" valeur={dog.identification} />
+              <Ligne terme="Poids actuel" valeur={dog.poids_actuel !== null ? `${dog.poids_actuel} kg` : null} />
+              <Ligne terme="Poids idéal" valeur={dog.poids_ideal !== null ? `${dog.poids_ideal} kg` : null} />
+              <Ligne
+                terme="BCS"
+                valeur={
+                  dog.bcs !== null ? `${dog.bcs}/9 — ${BCS_SCALE.find((b) => b.value === dog.bcs)?.label}` : null
+                }
+              />
+              <Ligne
+                terme="Diagnostic"
+                valeur={dog.date_diagnostic ? formatLongDate(dog.date_diagnostic) : null}
+              />
+            </dl>
+          </Card>
+
+          <Card className="break-inside-avoid">
+            <h2 className="mb-2 font-bold text-slate-900">Traitements en cours</h2>
+            {actifs.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucun médicament actif.</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {actifs.map((m) => (
+                  <li key={m.id} className="flex justify-between gap-3">
+                    <span className="text-slate-800">
+                      {m.nom_medicament}
+                      {m.dose && <span className="text-slate-500"> · {m.dose}</span>}
+                    </span>
+                    {m.heure_prise && (
+                      <span className="shrink-0 tabular-nums text-slate-500">{formatTime(m.heure_prise)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <div>
+            <h2 className="mb-2 px-1 font-bold text-slate-900">Journal chronologique</h2>
+            {jours.length === 0 ? (
+              <Card>
+                <p className="text-sm text-slate-500">Aucune saisie sur cette période.</p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {jours.map((jour) => (
+                  <JourCard key={jour.date} jour={jour} repas={repasEvents} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p className="pb-6 text-center text-xs text-slate-400 print:hidden">
+            Document généré depuis appeic. Les données sont déclaratives.
+          </p>
+        </>
+      )}
     </div>
   )
 }
