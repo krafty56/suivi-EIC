@@ -120,7 +120,7 @@ export type Jour = {
 /** Regroupe entrées, crises, événements et pesées par jour local, sur une
  * fenêtre [debut, fin] incluse. events peut déborder cette fenêtre en amont
  * (pour calculer le délai repas du premier jour) : seuls les jours >= debut
- * donnent lieu à une carte. Partagé entre l'Historique et l'export PDF, pour
+ * donnent lieu à une carte. Partagé entre le Journal et l'export PDF, pour
  * que les deux affichent exactement le même regroupement.
  *
  * Une crise est un épisode, pas un jour isolé : chaque jour de l'épisode

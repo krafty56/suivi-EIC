@@ -33,7 +33,7 @@ const TABS: {
 }[] = [
   { id: 'home', label: 'Accueil', title: 'Aujourd’hui', Icon: IconAccueil },
   { id: 'daily', label: 'Saisir', title: 'Saisir', Icon: IconSaisie },
-  { id: 'history', label: 'Historique', title: 'Historique', Icon: IconHistorique },
+  { id: 'history', label: 'Journal', title: 'Journal', Icon: IconHistorique },
   { id: 'analyses', label: 'Analyses', title: 'Analyses', Icon: IconAnalyses },
   { id: 'labs', label: 'Labo', title: 'Labo', Icon: IconLabo },
   { id: 'agenda', label: 'Agenda', title: 'Agenda', Icon: IconAgenda },

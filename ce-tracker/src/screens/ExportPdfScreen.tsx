@@ -24,7 +24,7 @@ function reculerDe(date: string, jours: number): string {
 }
 
 /** Journal imprimable à remettre au vétérinaire. Réutilise les mêmes cartes
- * de journée que l'onglet Historique (JourCard), en lecture seule, pour que
+ * de journée que l'onglet Journal (JourCard), en lecture seule, pour que
  * le document imprimé soit visuellement identique à l'application plutôt
  * qu'une mise en page distincte.
  *

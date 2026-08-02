@@ -44,7 +44,7 @@ type Props = {
 /** Carte d'une journée : badges de résumé, crise éventuelle, puis chaque
  * entrée. Sans recherche/filtre ni gestionnaires, elle s'affiche en lecture
  * seule — c'est ce que l'export PDF utilise pour être visuellement identique
- * à l'Historique plutôt qu'une mise en page distincte. */
+ * au Journal plutôt qu'une mise en page distincte. */
 export default function JourCard({
   jour,
   repas,
