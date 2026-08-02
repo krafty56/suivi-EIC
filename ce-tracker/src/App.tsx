@@ -170,7 +170,7 @@ export default function App() {
             >
               <item.Icon />
             </span>
-            <span className="max-w-full truncate px-0.5">{item.label}</span>
+            <span className="max-w-full px-0.5 text-center leading-tight break-words">{item.label}</span>
           </button>
         ))}
       </nav>
