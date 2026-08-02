@@ -13,11 +13,20 @@ const SUGGESTIONS_MOTIF = [
   'Vaccin',
 ]
 
+const ONGLETS_REPERES = [
+  { id: 'grele_colon', label: 'Grêle ou côlon' },
+  { id: 'autres_signes', label: 'Autres signes' },
+  { id: 'lexique', label: 'Lexique labo' },
+] as const
+
+type OngletRepere = (typeof ONGLETS_REPERES)[number]['id']
+
 export default function AgendaScreen({ dogId }: Props) {
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
   const [reperesOuverts, setReperesOuverts] = useState(false)
-  const [distinctionOuverte, setDistinctionOuverte] = useState(false)
+  const [informationsOuvertes, setInformationsOuvertes] = useState(false)
+  const [ongletRepere, setOngletRepere] = useState<OngletRepere>('grele_colon')
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -112,36 +121,122 @@ export default function AgendaScreen({ dogId }: Props) {
       <Card>
         <button
           type="button"
-          onClick={() => setDistinctionOuverte((o) => !o)}
+          onClick={() => setInformationsOuvertes((o) => !o)}
           className="flex w-full items-center justify-between gap-3 text-left"
         >
-          <p className="text-sm font-semibold text-slate-900">🔍 Grêle ou côlon ?</p>
+          <p className="text-sm font-semibold text-slate-900">📚 Repères cliniques</p>
           <span className="shrink-0 text-sm font-medium text-brand-700 underline">
-            {distinctionOuverte ? 'Masquer' : 'Voir les repères'}
+            {informationsOuvertes ? 'Masquer' : 'Voir les repères'}
           </span>
         </button>
 
-        {distinctionOuverte && (
+        {informationsOuvertes && (
           <div className="mt-3 space-y-3">
-            <CarteRepere titre="Atteinte de l’intestin grêle" tonalite="neutre">
-              <p className="text-sm text-slate-700">
-                Selles molles et abondantes, perte de poids progressive, appétit variable, parfois
-                augmenté, parfois diminué. Les vomissements, en particulier après les repas ou tôt
-                le matin, sont fréquents quel que soit le sous-type de la maladie.
-              </p>
-            </CarteRepere>
+            <div className="flex flex-wrap gap-2">
+              {ONGLETS_REPERES.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  aria-pressed={ongletRepere === o.id}
+                  onClick={() => setOngletRepere(o.id)}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                    ongletRepere === o.id
+                      ? 'bg-brand-700 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
 
-            <CarteRepere titre="Atteinte du côlon" tonalite="neutre">
-              <p className="text-sm text-slate-700">
-                Selles plus fréquentes mais de faible volume, présence de mucus, parfois un peu de
-                sang rouge vif. Ces signes traduisent une atteinte plus distale du tube digestif.
-              </p>
-            </CarteRepere>
+            {ongletRepere === 'grele_colon' && (
+              <div className="space-y-3">
+                <CarteRepere titre="Atteinte de l’intestin grêle" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Selles molles et abondantes, perte de poids progressive, appétit variable,
+                    parfois augmenté, parfois diminué. Les vomissements, en particulier après les
+                    repas ou tôt le matin, sont fréquents quel que soit le sous-type de la maladie.
+                  </p>
+                </CarteRepere>
 
-            <p className="text-xs text-slate-500">
-              Repère indicatif : la présentation clinique est souvent mixte, seul un examen
-              vétérinaire confirme l’origine.
-            </p>
+                <CarteRepere titre="Atteinte du côlon" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Selles plus fréquentes mais de faible volume, présence de mucus, parfois un peu
+                    de sang rouge vif. Ces signes traduisent une atteinte plus distale du tube
+                    digestif.
+                  </p>
+                </CarteRepere>
+
+                <p className="text-xs text-slate-500">
+                  Repère indicatif : la présentation clinique est souvent mixte, seul un examen
+                  vétérinaire confirme l’origine.
+                </p>
+              </div>
+            )}
+
+            {ongletRepere === 'autres_signes' && (
+              <div className="space-y-3">
+                <CarteRepere titre="Autres signes" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Certains signes sont rapportés par les propriétaires sans qu’ils fassent
+                    immédiatement le lien avec un trouble digestif : léthargie, changement de
+                    qualité du pelage, nausées intermittentes se manifestant par du bâillement, du
+                    léchage des babines ou l’ingestion d’herbe. Certains chiens manifestent
+                    également pour seul symptôme une dysorexie et un appétit qualifié de
+                    « capricieux ». Ces signes méritent d’être mentionnés à votre vétérinaire même
+                    s’ils semblent mineurs pris isolément.
+                  </p>
+                </CarteRepere>
+              </div>
+            )}
+
+            {ongletRepere === 'lexique' && (
+              <div className="space-y-3">
+                <CarteRepere titre="Albuminémie" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Protéine sanguine produite par le foie. Une baisse (hypoalbuminémie) peut
+                    signaler une entéropathie exsudative — une fuite de protéines dans l’intestin —
+                    et compte parmi les marqueurs de gravité les plus suivis en EIC.
+                  </p>
+                </CarteRepere>
+
+                <CarteRepere titre="Cobalamine (vitamine B12)" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Absorbée dans la partie terminale de l’intestin grêle (iléon). Une carence
+                    oriente souvent vers une atteinte du grêle ou une insuffisance pancréatique
+                    exocrine associée.
+                  </p>
+                </CarteRepere>
+
+                <CarteRepere titre="Folates (vitamine B9)" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Absorbés dans la partie initiale de l’intestin grêle (duodénum). Un taux
+                    anormal oriente vers une atteinte de cette zone ou une prolifération
+                    bactérienne intestinale.
+                  </p>
+                </CarteRepere>
+
+                <CarteRepere titre="PLI (lipase pancréatique spécifique)" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Marqueur de pancréatite, une inflammation souvent associée aux entéropathies
+                    chroniques du chien.
+                  </p>
+                </CarteRepere>
+
+                <CarteRepere titre="Globulines" tonalite="neutre">
+                  <p className="text-sm text-slate-700">
+                    Autres protéines sanguines ; une hausse peut accompagner une inflammation
+                    chronique.
+                  </p>
+                </CarteRepere>
+
+                <p className="text-xs text-slate-500">
+                  Repères généraux, non exhaustifs : seul votre vétérinaire interprète ces valeurs
+                  dans leur contexte.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </Card>
