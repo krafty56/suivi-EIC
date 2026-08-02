@@ -17,6 +17,7 @@ export default function AgendaScreen({ dogId }: Props) {
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
   const [reperesOuverts, setReperesOuverts] = useState(false)
+  const [distinctionOuverte, setDistinctionOuverte] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -67,7 +68,7 @@ export default function AgendaScreen({ dogId }: Props) {
 
         {reperesOuverts && (
           <div className="mt-3 space-y-3">
-            <NiveauUrgence titre="Urgence vétérinaire immédiate" tonalite="rouge">
+            <CarteRepere titre="Urgence vétérinaire immédiate" tonalite="rouge">
               <ListeReperes
                 items={[
                   'Diarrhée abondante ou sanglante d’apparition brutale',
@@ -78,9 +79,9 @@ export default function AgendaScreen({ dogId }: Props) {
                   'Difficulté respiratoire visible',
                 ]}
               />
-            </NiveauUrgence>
+            </CarteRepere>
 
-            <NiveauUrgence titre="Consultation urgente, si possible le jour même" tonalite="orange">
+            <CarteRepere titre="Consultation urgente, si possible le jour même" tonalite="orange">
               <ListeReperes
                 items={[
                   'Perte de poids supérieure à 5 % du poids corporel en deux à quatre semaines',
@@ -90,19 +91,56 @@ export default function AgendaScreen({ dogId }: Props) {
                   'Changement brutal et marqué par rapport à un état stable connu',
                 ]}
               />
-            </NiveauUrgence>
+            </CarteRepere>
 
-            <NiveauUrgence titre="Consultation non urgente, à programmer" tonalite="calme">
+            <CarteRepere titre="Consultation non urgente, à programmer" tonalite="calme">
               <p className="text-sm text-slate-700">
                 Ramollissement progressif des selles persistant plus de cinq à sept jours,
                 réapparition de vomissements intermittents après une période de rémission, perte de
                 poids progressive sur plusieurs semaines, ou changement d’aspect du pelage se
                 développant lentement.
               </p>
-            </NiveauUrgence>
+            </CarteRepere>
 
             <p className="text-xs text-slate-500">
               Repères indicatifs, à adapter avec votre vétérinaire — ils ne remplacent pas son avis.
+            </p>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <button
+          type="button"
+          onClick={() => setDistinctionOuverte((o) => !o)}
+          className="flex w-full items-center justify-between gap-3 text-left"
+        >
+          <p className="text-sm font-semibold text-slate-900">🔍 Grêle ou côlon ?</p>
+          <span className="shrink-0 text-sm font-medium text-brand-700 underline">
+            {distinctionOuverte ? 'Masquer' : 'Voir les repères'}
+          </span>
+        </button>
+
+        {distinctionOuverte && (
+          <div className="mt-3 space-y-3">
+            <CarteRepere titre="Atteinte de l’intestin grêle" tonalite="neutre">
+              <p className="text-sm text-slate-700">
+                Selles molles et abondantes, perte de poids progressive, appétit variable, parfois
+                augmenté, parfois diminué. Les vomissements, en particulier après les repas ou tôt
+                le matin, sont fréquents quel que soit le sous-type de la maladie.
+              </p>
+            </CarteRepere>
+
+            <CarteRepere titre="Atteinte du côlon" tonalite="neutre">
+              <p className="text-sm text-slate-700">
+                Selles plus fréquentes mais de faible volume, présence de mucus, parfois un peu de
+                sang rouge vif. Ces signes traduisent une atteinte plus distale du tube digestif.
+              </p>
+            </CarteRepere>
+
+            <p className="text-xs text-slate-500">
+              Repère indicatif : la présentation clinique est souvent mixte, seul un examen
+              vétérinaire confirme l’origine.
             </p>
           </div>
         )}
@@ -158,9 +196,13 @@ const TONALITES = {
   rouge: { carte: 'bg-red-50 ring-1 ring-red-200', titre: 'text-red-800' },
   orange: { carte: 'bg-amber-100', titre: 'text-amber-800' },
   calme: { carte: 'bg-slate-50 ring-1 ring-brand-200', titre: 'text-slate-800' },
+  neutre: { carte: 'bg-slate-50 ring-1 ring-slate-200', titre: 'text-slate-800' },
 } as const
 
-function NiveauUrgence({
+/** Petite carte de repère informatif (titre + encadré teinté) : partagée
+ * entre les paliers d'urgence et la distinction grêle/côlon, qui n'ont pas de
+ * hiérarchie de gravité entre elles mais suivent la même mise en page. */
+function CarteRepere({
   titre,
   tonalite,
   children,
