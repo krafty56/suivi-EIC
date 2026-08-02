@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Crise, DailyEntry, Dog, DogMedication, SuiviEvent, Weight } from '../lib/types'
-import { BCS_SCALE, CHANGEMENT_OPTIONS } from '../data/catalogs'
+import { BCS_SCALE } from '../data/catalogs'
 import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO } from '../lib/date'
-import { type Gravite, graviteJour, jourDe, lignesJour, resumeJour, texteLigne } from '../lib/journal'
+import { construireJours } from '../lib/journal'
 import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
+import JourCard from '../components/JourCard'
 import Logo from '../components/Logo'
 
 type Props = { dog: Dog; onClose: () => void }
@@ -15,20 +16,6 @@ const PERIODES = [
   { jours: 365, label: '1 an' },
 ]
 
-const FOND_LIGNE: Record<Gravite, string> = {
-  rouge: 'bg-red-50',
-  orange: 'bg-amber-100',
-  verte: 'bg-white',
-  neutre: 'bg-white',
-}
-
-const BORD_LIGNE: Record<Gravite, string> = {
-  rouge: 'border-l-red-700',
-  orange: 'border-l-amber-800',
-  verte: 'border-l-brand-200',
-  neutre: 'border-l-slate-200',
-}
-
 /** Une date YYYY-MM-DD, n jours avant une autre. */
 function reculerDe(date: string, jours: number): string {
   const d = new Date(date)
@@ -36,10 +23,15 @@ function reculerDe(date: string, jours: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** Journal imprimable à remettre au vétérinaire. Rendu hors de la coquille de
- * l'application (pas de hauteur fixe ni de scroll interne) : c'est ce qui
- * permet à window.print() de sortir tout le document plutôt que le seul
- * écran visible, comme pour le dossier partagé au vétérinaire. */
+/** Journal imprimable à remettre au vétérinaire. Réutilise les mêmes cartes
+ * de journée que l'onglet Historique (JourCard), en lecture seule, pour que
+ * le document imprimé soit visuellement identique à l'application plutôt
+ * qu'une mise en page distincte.
+ *
+ * Rendu hors de la coquille de l'application (pas de hauteur fixe ni de
+ * scroll interne) : c'est ce qui permet à window.print() de sortir tout le
+ * document plutôt que le seul écran visible, comme pour le dossier partagé
+ * au vétérinaire. */
 export default function ExportPdfScreen({ dog, onClose }: Props) {
   const [periodeJours, setPeriodeJours] = useState(90)
   const [medications, setMedications] = useState<DogMedication[]>([])
@@ -97,31 +89,10 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
 
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
-  const jours = useMemo(() => {
-    const entriesData = entries ?? []
-    const dates = new Set<string>([
-      ...entriesData.map((e) => e.date),
-      ...crises.map((c) => c.date),
-      ...events.filter((e) => jourDe(e.at) >= debut).map((e) => jourDe(e.at)),
-      ...poids.map((p) => p.date),
-    ])
-    return [...dates]
-      .filter((date) => date >= debut && date <= fin)
-      .sort((a, b) => b.localeCompare(a))
-      .map((date) => {
-        const evenementsJour = events.filter((e) => jourDe(e.at) === date)
-        const poidsJour = poids.filter((p) => p.date === date)
-        const crisesJour = crises.filter((c) => c.date === date)
-        const entryJour = entriesData.find((e) => e.date === date) ?? null
-        return {
-          date,
-          crises: crisesJour,
-          lignes: lignesJour(evenementsJour, poidsJour),
-          resume: resumeJour(evenementsJour, entryJour, crisesJour),
-          gravite: graviteJour(evenementsJour, entryJour, crisesJour),
-        }
-      })
-  }, [entries, crises, events, poids, debut, fin])
+  const jours = useMemo(
+    () => construireJours(entries ?? [], crises, events, poids, debut, fin),
+    [entries, crises, events, poids, debut, fin],
+  )
 
   if (entries === null) return <Spinner label="Préparation du journal…" />
 
@@ -212,81 +183,20 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
         )}
       </Card>
 
-      <Card className="p-0">
-        <h2 className="p-4 pb-2 font-bold text-slate-900">Journal chronologique</h2>
+      <div>
+        <h2 className="mb-2 px-1 font-bold text-slate-900">Journal chronologique</h2>
         {jours.length === 0 ? (
-          <p className="px-4 pb-4 text-sm text-slate-500">Aucune saisie sur cette période.</p>
+          <Card>
+            <p className="text-sm text-slate-500">Aucune saisie sur cette période.</p>
+          </Card>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs print:text-[10px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-500">
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Résumé</th>
-                  <th className="px-3 py-2 font-medium">Détail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jours.map((jour) => {
-                  const fond = FOND_LIGNE[jour.gravite]
-                  const bord = BORD_LIGNE[jour.gravite]
-                  const vide =
-                    jour.crises.length === 0 &&
-                    jour.resume.reflux === 0 &&
-                    jour.resume.selleScore === null &&
-                    jour.resume.vomissements === 0
-                  return (
-                    <tr key={jour.date} className="break-inside-avoid align-top">
-                      <td
-                        className={`border-b border-l-4 border-b-slate-100 px-3 py-2 font-medium whitespace-nowrap text-slate-800 ${fond} ${bord}`}
-                      >
-                        {formatShortDate(jour.date)}
-                      </td>
-                      <td className={`border-b border-b-slate-100 px-3 py-2 text-slate-600 ${fond}`}>
-                        <ul className="space-y-0.5">
-                          {jour.crises.length > 0 && <li className="font-semibold text-red-700">🚨 crise</li>}
-                          {jour.resume.reflux > 0 && <li>{jour.resume.reflux} reflux</li>}
-                          {jour.resume.selleScore !== null && <li>selle {jour.resume.selleScore}/7</li>}
-                          {jour.resume.vomissements > 0 && (
-                            <li>
-                              {jour.resume.vomissements} vomissement{jour.resume.vomissements > 1 ? 's' : ''}
-                            </li>
-                          )}
-                          {vide && <li className="text-slate-300">—</li>}
-                        </ul>
-                      </td>
-                      <td className={`border-b border-b-slate-100 px-3 py-2 text-slate-700 ${fond}`}>
-                        <ul className="space-y-0.5">
-                          {jour.crises.map((crise) => (
-                            <li key={crise.id} className="font-medium text-red-800">
-                              Crise
-                              {crise.changements.length > 0 &&
-                                ` — ${crise.changements
-                                  .map((c) => CHANGEMENT_OPTIONS.find((o) => o.value === c)?.label ?? c)
-                                  .join(', ')}`}
-                              {crise.note && ` : ${crise.note}`}
-                            </li>
-                          ))}
-                          {[...jour.lignes].reverse().map((ligne) => {
-                            const texte = texteLigne(ligne, repasEvents)
-                            return (
-                              <li key={ligne.id}>
-                                <span className="tabular-nums text-slate-400">{texte.heure}</span> {texte.emoji}{' '}
-                                {texte.titre}
-                                {texte.sousTitre && <span className="text-slate-500"> — {texte.sousTitre}</span>}
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {jours.map((jour) => (
+              <JourCard key={jour.date} jour={jour} repas={repasEvents} />
+            ))}
           </div>
         )}
-      </Card>
+      </div>
 
       <p className="pb-6 text-center text-xs text-slate-400 print:hidden">
         Document généré depuis appeic. Les données sont déclaratives.

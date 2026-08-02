@@ -99,3 +99,48 @@ export function graviteJour(events: SuiviEvent[], entry: DailyEntry | null, cris
   if (entry || events.length > 0) return 'verte'
   return 'neutre'
 }
+
+export type Jour = {
+  date: string
+  crises: Crise[]
+  lignes: LigneJour[]
+  resume: ReturnType<typeof resumeJour>
+  gravite: Gravite
+}
+
+/** Regroupe entrées, crises, événements et pesées par jour local, sur une
+ * fenêtre [debut, fin] incluse. events peut déborder cette fenêtre en amont
+ * (pour calculer le délai repas du premier jour) : seuls les jours >= debut
+ * donnent lieu à une carte. Partagé entre l'Historique et l'export PDF, pour
+ * que les deux affichent exactement le même regroupement. */
+export function construireJours(
+  entries: DailyEntry[],
+  crises: Crise[],
+  events: SuiviEvent[],
+  poids: Weight[],
+  debut: string,
+  fin: string,
+): Jour[] {
+  const dates = new Set<string>([
+    ...entries.map((e) => e.date),
+    ...crises.map((c) => c.date),
+    ...events.filter((e) => jourDe(e.at) >= debut).map((e) => jourDe(e.at)),
+    ...poids.map((p) => p.date),
+  ])
+  return [...dates]
+    .filter((date) => date >= debut && date <= fin)
+    .sort((a, b) => b.localeCompare(a))
+    .map((date) => {
+      const evenementsJour = events.filter((e) => jourDe(e.at) === date)
+      const poidsJour = poids.filter((p) => p.date === date)
+      const crisesJour = crises.filter((c) => c.date === date)
+      const entryJour = entries.find((e) => e.date === date) ?? null
+      return {
+        date,
+        crises: crisesJour,
+        lignes: lignesJour(evenementsJour, poidsJour),
+        resume: resumeJour(evenementsJour, entryJour, crisesJour),
+        gravite: graviteJour(evenementsJour, entryJour, crisesJour),
+      }
+    })
+}
