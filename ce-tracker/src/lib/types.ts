@@ -182,3 +182,11 @@ export type FoodEntry = {
   quantite_jour: string | null
   note: string | null
 }
+
+export type Veterinaire = {
+  id: string
+  dog_id: string
+  nom: string
+  telephone: string | null
+  email: string | null
+}
