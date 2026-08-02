@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Dog, Weight } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
-import { formatShortDate, todayISO } from '../lib/date'
+import { calculerAge, formatShortDate, todayISO } from '../lib/date'
 import { Button, Card, ErrorMessage, Field, inputClass } from '../components/ui'
 
 type Props = {
@@ -22,7 +22,8 @@ function toNumber(value: string): number | null {
 export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
   const [name, setName] = useState(dog?.name ?? '')
   const [race, setRace] = useState(dog?.race ?? '')
-  const [age, setAge] = useState(dog?.age?.toString() ?? '')
+  const [dateNaissance, setDateNaissance] = useState(dog?.date_naissance ?? '')
+  const [identification, setIdentification] = useState(dog?.identification ?? '')
   const [poidsActuel, setPoidsActuel] = useState(dog?.poids_actuel?.toString() ?? '')
   const [poidsIdeal, setPoidsIdeal] = useState(dog?.poids_ideal?.toString() ?? '')
   const [bcs, setBcs] = useState<number | null>(dog?.bcs ?? null)
@@ -55,7 +56,8 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
       owner_id: ownerId,
       name: name.trim(),
       race: race.trim() || null,
-      age: toNumber(age),
+      date_naissance: dateNaissance || null,
+      identification: identification.trim() || null,
       poids_actuel: toNumber(poidsActuel),
       poids_ideal: toNumber(poidsIdeal),
       bcs,
@@ -115,11 +117,23 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
           <input value={race} onChange={(e) => setRace(e.target.value)} className={inputClass} />
         </Field>
 
-        <Field label="Âge (années)">
+        <Field
+          label="Date de naissance"
+          hint={dateNaissance ? `${calculerAge(dateNaissance)} ans` : undefined}
+        >
           <input
-            inputMode="decimal"
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
+            type="date"
+            max={todayISO()}
+            value={dateNaissance}
+            onChange={(e) => setDateNaissance(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field label="Puce électronique ou tatouage" hint="Numéro d'identification, si connu">
+          <input
+            value={identification}
+            onChange={(e) => setIdentification(e.target.value)}
             className={inputClass}
           />
         </Field>

@@ -43,6 +43,20 @@ export function heureDe(at: string): string {
   return new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
+/** Âge en années révolues à partir d'une date de naissance YYYY-MM-DD :
+ * recalculé à la volée plutôt que saisi, il ne se périme jamais. */
+export function calculerAge(dateNaissance: string): number {
+  const [y, m, d] = dateNaissance.split('-').map(Number)
+  const naissance = new Date(y, m - 1, d)
+  const aujourdhui = new Date()
+  let age = aujourdhui.getFullYear() - naissance.getFullYear()
+  const avantAnniversaire =
+    aujourdhui.getMonth() < naissance.getMonth() ||
+    (aujourdhui.getMonth() === naissance.getMonth() && aujourdhui.getDate() < naissance.getDate())
+  if (avantAnniversaire) age -= 1
+  return age
+}
+
 /** Valeur locale pour un input datetime-local, à partir d'un horodatage ISO. */
 export function datetimeLocalDe(at: string): string {
   const d = new Date(at)

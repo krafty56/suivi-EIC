@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Crise, DailyEntry, Dog, DogMedication, SuiviEvent, Weight } from '../lib/types'
 import { BCS_SCALE, CHANGEMENT_OPTIONS } from '../data/catalogs'
-import { formatLongDate, formatShortDate, formatTime, todayISO } from '../lib/date'
+import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO } from '../lib/date'
 import { type Gravite, graviteJour, jourDe, lignesJour, resumeJour, texteLigne } from '../lib/journal'
 import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
@@ -174,7 +174,8 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
         <h2 className="mb-2 font-bold text-slate-900">Fiche</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
           <Ligne terme="Race" valeur={dog.race} />
-          <Ligne terme="Âge" valeur={dog.age !== null ? `${dog.age} ans` : null} />
+          <Ligne terme="Âge" valeur={dog.date_naissance ? `${calculerAge(dog.date_naissance)} ans` : null} />
+          <Ligne terme="Puce / tatouage" valeur={dog.identification} />
           <Ligne terme="Poids actuel" valeur={dog.poids_actuel !== null ? `${dog.poids_actuel} kg` : null} />
           <Ligne terme="Poids idéal" valeur={dog.poids_ideal !== null ? `${dog.poids_ideal} kg` : null} />
           <Ligne

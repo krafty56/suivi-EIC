@@ -50,7 +50,8 @@ export type Dog = {
   owner_id: string
   name: string
   race: string | null
-  age: number | null
+  date_naissance: string | null
+  identification: string | null
   poids_actuel: number | null
   poids_ideal: number | null
   bcs: number | null

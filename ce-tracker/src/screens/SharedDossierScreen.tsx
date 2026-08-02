@@ -10,7 +10,7 @@ import {
   GRAVITE_OPTIONS,
 } from '../data/catalogs'
 import { TOUS_LES_ITEMS } from '../data/scores'
-import { formatLongDate, formatShortDate, formatTime } from '../lib/date'
+import { calculerAge, formatLongDate, formatShortDate, formatTime } from '../lib/date'
 import { Button, Card, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
 import { labPhotoUrl } from '../lib/storage'
@@ -93,7 +93,8 @@ export default function SharedDossierScreen({ token }: Props) {
         <h2 className="mb-2 font-bold text-slate-900">Fiche</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <Ligne terme="Race" valeur={dog.race} />
-          <Ligne terme="Âge" valeur={dog.age !== null ? `${dog.age} ans` : null} />
+          <Ligne terme="Âge" valeur={dog.date_naissance ? `${calculerAge(dog.date_naissance)} ans` : null} />
+          <Ligne terme="Puce / tatouage" valeur={dog.identification} />
           <Ligne terme="Poids actuel" valeur={dog.poids_actuel !== null ? `${dog.poids_actuel} kg` : null} />
           <Ligne terme="Poids idéal" valeur={dog.poids_ideal !== null ? `${dog.poids_ideal} kg` : null} />
           <Ligne
