@@ -8,6 +8,7 @@ import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
 import SaisirHubScreen from './screens/SaisirHubScreen'
+import ExportPdfScreen from './screens/ExportPdfScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabHubScreen from './screens/LabHubScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
@@ -53,6 +54,7 @@ export default function App() {
   const [dogLoaded, setDogLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('home')
+  const [exportOuvert, setExportOuvert] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -113,6 +115,10 @@ export default function App() {
     )
   }
 
+  // Rendu hors coquille (pas de hauteur fixe, pas de scroll interne) : sinon
+  // window.print() ne sort que la portion actuellement visible à l'écran.
+  if (exportOuvert) return <ExportPdfScreen dog={dog} onClose={() => setExportOuvert(false)} />
+
   const currentTab = TABS.find((item) => item.id === tab)!
 
   return (
@@ -133,7 +139,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto">
         {tab === 'home' && <AccueilScreen dog={dog} />}
         {tab === 'daily' && <SaisirHubScreen dog={dog} onDogChange={setDog} />}
-        {tab === 'history' && <HistoryHubScreen dogId={dog.id} />}
+        {tab === 'history' && <HistoryHubScreen dog={dog} onExport={() => setExportOuvert(true)} />}
         {tab === 'analyses' && (
           <Suspense fallback={<Spinner label="Chargement des analyses…" />}>
             <AnalysesScreen dogId={dog.id} />
