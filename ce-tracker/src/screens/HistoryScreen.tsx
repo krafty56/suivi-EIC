@@ -6,6 +6,7 @@ import { type Categorie, construireJours } from '../lib/journal'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Card, ErrorMessage, Sheet, Spinner, inputClass } from '../components/ui'
 import JourCard from '../components/JourCard'
+import CrisisSheet from './CrisisSheet'
 
 type Props = { dogId: string }
 
@@ -44,6 +45,8 @@ export default function HistoryScreen({ dogId }: Props) {
   const [poids, setPoids] = useState<Weight[]>([])
   const [error, setError] = useState<string | null>(null)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
+  const [editingCrise, setEditingCrise] = useState<Crise | null>(null)
+  const [refreshSignal, setRefreshSignal] = useState(0)
 
   const fin = todayISO()
   const debut = reculerDe(fin, periodeJours - 1)
@@ -67,7 +70,16 @@ export default function HistoryScreen({ dogId }: Props) {
           .gte('date', debut)
           .lte('date', fin)
           .order('date'),
-        supabase.from('crises').select('*').eq('dog_id', dogId).gte('date', debut).lte('date', fin).order('date'),
+        // Chevauchement avec la fenêtre plutôt qu'une simple borne sur
+        // date_debut : une crise commencée avant mais toujours en cours (ou
+        // résolue après le début de la fenêtre) doit rester visible.
+        supabase
+          .from('crises')
+          .select('*')
+          .eq('dog_id', dogId)
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
         supabase
           .from('events')
           .select('*')
@@ -89,7 +101,7 @@ export default function HistoryScreen({ dogId }: Props) {
       setPoids(p.data as Weight[])
     }
     void load()
-  }, [dogId, periodeJours, debut, fin])
+  }, [dogId, periodeJours, debut, fin, refreshSignal])
 
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
@@ -192,6 +204,7 @@ export default function HistoryScreen({ dogId }: Props) {
               onDelete={supprimer}
               onDeletePoids={supprimerPoids}
               onZoom={setZoomed}
+              onEditCrise={setEditingCrise}
             />
           ))}
         </div>
@@ -201,6 +214,18 @@ export default function HistoryScreen({ dogId }: Props) {
         <Sheet title={zoomed.nom} onClose={() => setZoomed(null)}>
           <img src={stoolPhotoUrl(zoomed.storage_path)} alt="" className="w-full rounded-xl" />
         </Sheet>
+      )}
+
+      {editingCrise && (
+        <CrisisSheet
+          dogId={dogId}
+          crise={editingCrise}
+          onClose={() => setEditingCrise(null)}
+          onSaved={() => {
+            setEditingCrise(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
       )}
     </div>
   )

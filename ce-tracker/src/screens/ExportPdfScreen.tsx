@@ -70,7 +70,16 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
           .gte('date', debut)
           .lte('date', fin)
           .order('date'),
-        supabase.from('crises').select('*').eq('dog_id', dog.id).gte('date', debut).lte('date', fin).order('date'),
+        // Chevauchement avec la fenêtre plutôt qu'une simple borne sur
+        // date_debut : une crise commencée avant mais toujours en cours (ou
+        // résolue après le début de la fenêtre) doit rester visible.
+        supabase
+          .from('crises')
+          .select('*')
+          .eq('dog_id', dog.id)
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
         supabase
           .from('events')
           .select('*')

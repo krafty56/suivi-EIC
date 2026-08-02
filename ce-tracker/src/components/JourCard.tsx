@@ -1,9 +1,9 @@
 import { CHANGEMENT_OPTIONS } from '../data/catalogs'
 import { EMOJI_CRISE } from '../data/emoji'
-import { formatLongDate } from '../lib/date'
+import { formatLongDate, formatShortDate } from '../lib/date'
 import { type Categorie, type Gravite, type Jour, texteLigne } from '../lib/journal'
 import { stoolPhotoUrl } from '../lib/storage'
-import type { SuiviEvent } from '../lib/types'
+import type { Crise, SuiviEvent } from '../lib/types'
 import { Card } from './ui'
 
 const BARRE_GRAVITE: Record<Gravite, string> = {
@@ -38,6 +38,7 @@ type Props = {
   onDelete?: (id: string) => void
   onDeletePoids?: (id: string) => void
   onZoom?: (event: SuiviEvent) => void
+  onEditCrise?: (crise: Crise) => void
 }
 
 /** Carte d'une journée : badges de résumé, crise éventuelle, puis chaque
@@ -52,6 +53,7 @@ export default function JourCard({
   onDelete,
   onDeletePoids,
   onZoom,
+  onEditCrise,
 }: Props) {
   const lignesFiltrees = jour.lignes.filter((ligne) => {
     if (categoriesActives.size > 0 && !categoriesActives.has(ligne.categorie)) return false
@@ -93,18 +95,37 @@ export default function JourCard({
             </div>
           </div>
 
-          {crisesFiltrees.map((crise) => (
-            <div key={crise.id} className="mb-1.5 rounded-xl bg-red-50 px-3 py-2">
-              <p className="text-sm font-bold text-red-800">
-                {EMOJI_CRISE} Crise signalée
-                {crise.changements.length > 0 &&
-                  ` — ${crise.changements
-                    .map((c) => CHANGEMENT_OPTIONS.find((o) => o.value === c)?.label ?? c)
-                    .join(', ')}`}
-              </p>
-              {crise.note && <p className="mt-0.5 text-sm text-red-900">{crise.note}</p>}
-            </div>
-          ))}
+          {crisesFiltrees.map((crise) => {
+            const contenu = (
+              <>
+                <p className="text-sm font-bold text-red-800">
+                  {EMOJI_CRISE} Crise signalée
+                  {crise.changements.length > 0 &&
+                    ` — ${crise.changements
+                      .map((c) => CHANGEMENT_OPTIONS.find((o) => o.value === c)?.label ?? c)
+                      .join(', ')}`}
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-red-700">
+                  {crise.date_fin ? `Jusqu’au ${formatShortDate(crise.date_fin)}` : 'En cours'}
+                </p>
+                {crise.note && <p className="mt-0.5 text-sm text-red-900">{crise.note}</p>}
+              </>
+            )
+            return onEditCrise ? (
+              <button
+                key={crise.id}
+                type="button"
+                onClick={() => onEditCrise(crise)}
+                className="mb-1.5 w-full rounded-xl bg-red-50 px-3 py-2 text-left"
+              >
+                {contenu}
+              </button>
+            ) : (
+              <div key={crise.id} className="mb-1.5 rounded-xl bg-red-50 px-3 py-2">
+                {contenu}
+              </div>
+            )
+          })}
 
           {lignesFiltrees.length > 0 && (
             <ul className="divide-y divide-slate-100">

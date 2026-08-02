@@ -102,7 +102,9 @@ export type Changement = 'alimentation' | 'stress_evenement' | 'medicament_modif
 export type Crise = {
   id: string
   dog_id: string
-  date: string
+  date_debut: string
+  /** Renseignée une fois la crise résolue ; null tant qu'elle est en cours. */
+  date_fin: string | null
   changements: Changement[]
   note: string | null
 }

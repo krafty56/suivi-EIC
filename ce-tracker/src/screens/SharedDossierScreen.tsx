@@ -63,7 +63,7 @@ export default function SharedDossierScreen({ token }: Props) {
   const dates = [
     ...new Set([
       ...entries.map((e) => e.date),
-      ...crises.map((c) => c.date),
+      ...crises.map((c) => c.date_debut),
       ...events.map((e) => jourDe(e.at)),
     ]),
   ].sort((a, b) => b.localeCompare(a))
@@ -257,7 +257,7 @@ export default function SharedDossierScreen({ token }: Props) {
                 key={date}
                 date={date}
                 entry={entries.find((e) => e.date === date) ?? null}
-                crises={crises.filter((c) => c.date === date)}
+                crises={crises.filter((c) => c.date_debut === date)}
                 events={events.filter((e) => jourDe(e.at) === date)}
               />
             ))}
@@ -308,6 +308,9 @@ function Journee({
               ` — ${crise.changements
                 .map((c) => CHANGEMENT_OPTIONS.find((o) => o.value === c)?.label ?? c)
                 .join(', ')}`}
+          </p>
+          <p className="text-xs font-medium text-red-700">
+            {crise.date_fin ? `Jusqu’au ${formatShortDate(crise.date_fin)}` : 'En cours'}
           </p>
           {crise.note && <p className="text-sm text-red-900">{crise.note}</p>}
         </div>

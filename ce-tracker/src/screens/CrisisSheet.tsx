@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Changement } from '../lib/types'
+import type { Changement, Crise } from '../lib/types'
 import { CHANGEMENT_OPTIONS } from '../data/catalogs'
 import { todayISO } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 type Props = {
   dogId: string
+  /** Présente : on modifie cette crise (typiquement pour y ajouter une date
+   * de fin une fois résolue). Absente : on en signale une nouvelle. */
+  crise?: Crise
   onClose: () => void
   onSaved: () => void
 }
 
-export default function CrisisSheet({ dogId, onClose, onSaved }: Props) {
-  const [date, setDate] = useState(todayISO())
-  const [changements, setChangements] = useState<Changement[]>([])
-  const [note, setNote] = useState('')
+export default function CrisisSheet({ dogId, crise, onClose, onSaved }: Props) {
+  const [dateDebut, setDateDebut] = useState(crise?.date_debut ?? todayISO())
+  const [dateFin, setDateFin] = useState(crise?.date_fin ?? '')
+  const [changements, setChangements] = useState<Changement[]>(crise?.changements ?? [])
+  const [note, setNote] = useState(crise?.note ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -29,12 +33,17 @@ export default function CrisisSheet({ dogId, onClose, onSaved }: Props) {
     setError(null)
     setBusy(true)
 
-    const { error: dbError } = await supabase.from('crises').insert({
+    const payload = {
       dog_id: dogId,
-      date,
+      date_debut: dateDebut,
+      date_fin: dateFin || null,
       changements,
       note: note.trim() || null,
-    })
+    }
+
+    const { error: dbError } = crise
+      ? await supabase.from('crises').update(payload).eq('id', crise.id)
+      : await supabase.from('crises').insert(payload)
 
     setBusy(false)
     if (dbError) setError(dbError.message)
@@ -42,17 +51,30 @@ export default function CrisisSheet({ dogId, onClose, onSaved }: Props) {
   }
 
   return (
-    <Sheet title="🚨 Signaler une crise" onClose={onClose}>
+    <Sheet title={crise ? '🚨 Modifier la crise' : '🚨 Signaler une crise'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Date de la crise">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputClass}
-            required
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Date de début">
+            <input
+              type="date"
+              value={dateDebut}
+              max={todayISO()}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Date de fin" hint="Une fois la crise résolue">
+            <input
+              type="date"
+              value={dateFin}
+              min={dateDebut}
+              max={todayISO()}
+              onChange={(e) => setDateFin(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        </div>
 
         <div>
           <p className="mb-2 text-sm font-medium text-slate-700">
@@ -94,7 +116,7 @@ export default function CrisisSheet({ dogId, onClose, onSaved }: Props) {
         <ErrorMessage>{error}</ErrorMessage>
 
         <Button type="submit" disabled={busy} className="w-full">
-          {busy ? 'Enregistrement…' : 'Enregistrer la crise'}
+          {busy ? 'Enregistrement…' : crise ? 'Mettre à jour la crise' : 'Enregistrer la crise'}
         </Button>
       </form>
     </Sheet>

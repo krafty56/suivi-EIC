@@ -100,8 +100,17 @@ export function graviteJour(events: SuiviEvent[], entry: DailyEntry | null, cris
   return 'neutre'
 }
 
+/** Une crise dure de date_debut à date_fin (ou jusqu'à aujourd'hui si encore
+ * en cours) : `borne` est la fin à considérer pour une crise sans date_fin,
+ * typiquement la fenêtre affichée (déjà plafonnée à aujourd'hui partout). */
+function estActiveLe(crise: Crise, date: string, borne: string): boolean {
+  return date >= crise.date_debut && date <= (crise.date_fin ?? borne)
+}
+
 export type Jour = {
   date: string
+  /** Crises qui ont démarré ce jour-là : c'est ce qui porte la bannière
+   * détaillée, une seule fois par crise plutôt qu'à chaque jour de l'épisode. */
   crises: Crise[]
   lignes: LigneJour[]
   resume: ReturnType<typeof resumeJour>
@@ -112,7 +121,12 @@ export type Jour = {
  * fenêtre [debut, fin] incluse. events peut déborder cette fenêtre en amont
  * (pour calculer le délai repas du premier jour) : seuls les jours >= debut
  * donnent lieu à une carte. Partagé entre l'Historique et l'export PDF, pour
- * que les deux affichent exactement le même regroupement. */
+ * que les deux affichent exactement le même regroupement.
+ *
+ * Une crise est un épisode, pas un jour isolé : chaque jour de l'épisode
+ * compte pour le badge et la gravité (resume/gravite reçoivent les crises
+ * actives ce jour-là), mais la bannière détaillée n'apparaît que le jour de
+ * début, pour ne pas la répéter à l'identique sur toute la durée. */
 export function construireJours(
   entries: DailyEntry[],
   crises: Crise[],
@@ -123,7 +137,7 @@ export function construireJours(
 ): Jour[] {
   const dates = new Set<string>([
     ...entries.map((e) => e.date),
-    ...crises.map((c) => c.date),
+    ...crises.map((c) => c.date_debut),
     ...events.filter((e) => jourDe(e.at) >= debut).map((e) => jourDe(e.at)),
     ...poids.map((p) => p.date),
   ])
@@ -133,14 +147,15 @@ export function construireJours(
     .map((date) => {
       const evenementsJour = events.filter((e) => jourDe(e.at) === date)
       const poidsJour = poids.filter((p) => p.date === date)
-      const crisesJour = crises.filter((c) => c.date === date)
+      const crisesActives = crises.filter((c) => estActiveLe(c, date, fin))
+      const crisesDebut = crises.filter((c) => c.date_debut === date)
       const entryJour = entries.find((e) => e.date === date) ?? null
       return {
         date,
-        crises: crisesJour,
+        crises: crisesDebut,
         lignes: lignesJour(evenementsJour, poidsJour),
-        resume: resumeJour(evenementsJour, entryJour, crisesJour),
-        gravite: graviteJour(evenementsJour, entryJour, crisesJour),
+        resume: resumeJour(evenementsJour, entryJour, crisesActives),
+        gravite: graviteJour(evenementsJour, entryJour, crisesActives),
       }
     })
 }

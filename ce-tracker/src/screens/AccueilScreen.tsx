@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type {
   Appetit,
   Appointment,
+  Crise,
   DailyEntry,
   Dog,
   DogMedication,
@@ -12,7 +13,7 @@ import type {
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsEvenement } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
-import { formatLongDate, formatTime, heureDe, joursDepuis, todayISO } from '../lib/date'
+import { formatLongDate, formatShortDate, formatTime, heureDe, joursDepuis, todayISO } from '../lib/date'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import CrisisSheet from './CrisisSheet'
@@ -35,9 +36,9 @@ export default function AccueilScreen({ dog }: Props) {
   const [medications, setMedications] = useState<DogMedication[]>([])
   const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
-  const [derniereCrise, setDerniereCrise] = useState<{ date: string } | null | undefined>(undefined)
+  const [derniereCrise, setDerniereCrise] = useState<Crise | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
-  const [crisisSheet, setCrisisSheet] = useState(false)
+  const [crisisSheetMode, setCrisisSheetMode] = useState<'nouvelle' | 'modifier' | null>(null)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
@@ -74,9 +75,9 @@ export default function AccueilScreen({ dog }: Props) {
           .maybeSingle(),
         supabase
           .from('crises')
-          .select('date')
+          .select('*')
           .eq('dog_id', dog.id)
-          .order('date', { ascending: false })
+          .order('date_debut', { ascending: false })
           .limit(1)
           .maybeSingle(),
       ])
@@ -92,7 +93,7 @@ export default function AccueilScreen({ dog }: Props) {
       setEntry(dailyEntry)
       setMedications(medsResult.data as DogMedication[])
       setProchainRdv(rdvResult.data as Appointment | null)
-      setDerniereCrise(criseResult.data as { date: string } | null)
+      setDerniereCrise(criseResult.data as Crise | null)
 
       // La checklist du jour (Saisir) et les événements traitement horodatés
       // sont deux façons d'enregistrer une prise : les deux comptent ici.
@@ -130,7 +131,8 @@ export default function AccueilScreen({ dog }: Props) {
     takenMeds.has(medicationId) ||
     events.some((e) => e.type === 'traitement' && e.dog_medication_id === medicationId)
 
-  const joursSansCrise = derniereCrise ? joursDepuis(derniereCrise.date) : null
+  const enCrise = derniereCrise ? derniereCrise.date_fin === null : false
+  const joursSansCrise = derniereCrise?.date_fin ? joursDepuis(derniereCrise.date_fin) : null
 
   return (
     <div className="space-y-4 p-4 pb-8">
@@ -140,23 +142,35 @@ export default function AccueilScreen({ dog }: Props) {
       </div>
 
       {derniereCrise !== undefined && (
-        <Card className={joursSansCrise === 0 ? 'ring-2 ring-red-200' : ''}>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">
-              {joursSansCrise === null ? '🛡️' : joursSansCrise === 0 ? '🚨' : joursSansCrise < 7 ? '⚠️' : '🛡️'}
-            </span>
-            <div>
-              <p className="text-sm font-medium text-slate-700">
-                {joursSansCrise === null
-                  ? 'Aucune crise enregistrée'
-                  : joursSansCrise === 0
-                    ? 'Crise signalée aujourd’hui'
-                    : 'Jours sans crise'}
-              </p>
-              {joursSansCrise !== null && joursSansCrise > 0 && (
-                <p className="text-2xl font-bold tabular-nums text-slate-900">{joursSansCrise}</p>
-              )}
+        <Card className={enCrise ? 'ring-2 ring-red-200' : ''}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" aria-hidden="true">
+                {!derniereCrise ? '🛡️' : enCrise ? '🚨' : joursSansCrise !== null && joursSansCrise < 7 ? '⚠️' : '🛡️'}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-700">
+                  {!derniereCrise
+                    ? 'Aucune crise enregistrée'
+                    : enCrise
+                      ? `En crise depuis le ${formatShortDate(derniereCrise.date_debut)}`
+                      : 'Jours sans crise'}
+                </p>
+                {derniereCrise && !enCrise && joursSansCrise !== null && (
+                  <p className="text-2xl font-bold tabular-nums text-slate-900">{joursSansCrise}</p>
+                )}
+              </div>
             </div>
+            {enCrise && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 py-2 text-xs"
+                onClick={() => setCrisisSheetMode('modifier')}
+              >
+                Clôturer
+              </Button>
+            )}
           </div>
         </Card>
       )}
@@ -298,17 +312,18 @@ export default function AccueilScreen({ dog }: Props) {
         type="button"
         variant="danger"
         className="w-full py-2.5 text-sm"
-        onClick={() => setCrisisSheet(true)}
+        onClick={() => setCrisisSheetMode('nouvelle')}
       >
         🚨 Signaler une crise
       </Button>
 
-      {crisisSheet && (
+      {crisisSheetMode && (
         <CrisisSheet
           dogId={dog.id}
-          onClose={() => setCrisisSheet(false)}
+          crise={crisisSheetMode === 'modifier' && derniereCrise ? derniereCrise : undefined}
+          onClose={() => setCrisisSheetMode(null)}
           onSaved={() => {
-            setCrisisSheet(false)
+            setCrisisSheetMode(null)
             setRefreshSignal((n) => n + 1)
           }}
         />
