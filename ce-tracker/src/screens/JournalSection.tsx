@@ -5,6 +5,7 @@ import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symp
 import { FECAL_SCORES } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
+import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
@@ -49,6 +50,7 @@ export default function JournalSection({
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [ajout, setAjout] = useState<Ajout | null>(null)
   const [config, setConfig] = useState(false)
+  const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -78,6 +80,7 @@ export default function JournalSection({
     intensite: number | null
     quand: string
     note: string
+    storagePath: string | null
   }) {
     const valeurs = {
       dog_id: dog.id,
@@ -87,6 +90,7 @@ export default function JournalSection({
       categorie: payload.entree.categorie,
       intensite: payload.intensite,
       note: payload.note.trim() || null,
+      storage_path: payload.storagePath,
     }
     const { error: dbError } = payload.id
       ? await supabase.from('events').update(valeurs).eq('id', payload.id)
@@ -173,6 +177,15 @@ export default function JournalSection({
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-1 px-2 py-1">
+                  {event.type === 'selle' && event.storage_path && (
+                    <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
+                      <img
+                        src={stoolPhotoUrl(event.storage_path)}
+                        alt=""
+                        className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200"
+                      />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => ouvrirEdition(event)}
@@ -222,12 +235,19 @@ export default function JournalSection({
           key={ajout.mode === 'edition' ? ajout.evenement.id : 'nouveau'}
           init={ajout}
           date={date}
+          dogId={dog.id}
           onClose={() => setAjout(null)}
           onSave={(payload) => {
             setAjout(null)
             void sauvegarder(payload)
           }}
         />
+      )}
+
+      {zoomed && zoomed.storage_path && (
+        <Sheet title={zoomed.nom} onClose={() => setZoomed(null)}>
+          <img src={stoolPhotoUrl(zoomed.storage_path)} alt="" className="w-full rounded-xl" />
+        </Sheet>
       )}
 
       {config && (
@@ -249,11 +269,13 @@ export default function JournalSection({
 function AjoutSheet({
   init,
   date,
+  dogId,
   onClose,
   onSave,
 }: {
   init: Ajout
   date: string
+  dogId: string
   onClose: () => void
   onSave: (payload: {
     id?: string
@@ -261,6 +283,7 @@ function AjoutSheet({
     intensite: number | null
     quand: string
     note: string
+    storagePath: string | null
   }) => void
 }) {
   const evenement = init.mode === 'edition' ? init.evenement : null
@@ -282,6 +305,58 @@ function AjoutSheet({
     evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
   )
   const [note, setNote] = useState(evenement?.note ?? '')
+
+  // La photo n'a de sens que pour une selle, pas pour un symptôme constaté
+  // ou un repas.
+  const [fichierPhoto, setFichierPhoto] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [photoSupprimee, setPhotoSupprimee] = useState(false)
+  const [busyPhoto, setBusyPhoto] = useState(false)
+  const [erreurPhoto, setErreurPhoto] = useState<string | null>(null)
+  const photoActuelle = evenement?.storage_path ?? null
+
+  useEffect(() => {
+    if (!fichierPhoto) {
+      setPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(fichierPhoto)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [fichierPhoto])
+
+  async function handleEnregistrer() {
+    if (!choisi) return
+    setErreurPhoto(null)
+
+    let storagePath = choisi.type === 'selle' ? photoActuelle : null
+
+    if (choisi.type === 'selle' && fichierPhoto) {
+      setBusyPhoto(true)
+      const extension = fichierPhoto.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const path = `${dogId}/${crypto.randomUUID()}.${extension}`
+      const { error: uploadError } = await supabase.storage
+        .from(STOOL_BUCKET)
+        .upload(path, fichierPhoto, { contentType: fichierPhoto.type || undefined })
+      setBusyPhoto(false)
+      if (uploadError) {
+        setErreurPhoto(uploadError.message)
+        return
+      }
+      storagePath = path
+    } else if (choisi.type === 'selle' && photoSupprimee) {
+      storagePath = null
+    }
+
+    onSave({
+      id: evenement?.id,
+      entree: choisi,
+      intensite: choisi.echelle ? intensite : null,
+      quand,
+      note,
+      storagePath,
+    })
+  }
 
   if (!choisi) {
     return (
@@ -364,6 +439,47 @@ function AjoutSheet({
           </div>
         )}
 
+        {choisi.type === 'selle' && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Photo (optionnel)</p>
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt=""
+                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
+              />
+            ) : photoActuelle && !photoSupprimee ? (
+              <img
+                src={stoolPhotoUrl(photoActuelle)}
+                alt=""
+                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
+              />
+            ) : null}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                setFichierPhoto(e.target.files?.[0] ?? null)
+                setPhotoSupprimee(false)
+              }}
+              className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
+            />
+            {(fichierPhoto || (photoActuelle && !photoSupprimee)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFichierPhoto(null)
+                  setPhotoSupprimee(true)
+                }}
+                className="mt-2 text-sm font-medium text-red-700 underline"
+              >
+                Retirer la photo
+              </button>
+            )}
+            <ErrorMessage>{erreurPhoto}</ErrorMessage>
+          </div>
+        )}
+
         <Field label="Quand ?">
           <input
             type="datetime-local"
@@ -386,18 +502,10 @@ function AjoutSheet({
         <Button
           type="button"
           className="w-full"
-          disabled={choisi.echelle && intensite === null}
-          onClick={() =>
-            onSave({
-              id: evenement?.id,
-              entree: choisi,
-              intensite: choisi.echelle ? intensite : null,
-              quand,
-              note,
-            })
-          }
+          disabled={(choisi.echelle && intensite === null) || busyPhoto}
+          onClick={() => void handleEnregistrer()}
         >
-          {evenement ? 'Enregistrer les modifications' : 'Enregistrer'}
+          {busyPhoto ? 'Envoi de la photo…' : evenement ? 'Enregistrer les modifications' : 'Enregistrer'}
         </Button>
         {(evenement !== null || depart === null) && (
           <Button

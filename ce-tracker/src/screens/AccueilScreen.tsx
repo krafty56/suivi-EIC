@@ -12,7 +12,8 @@ import type {
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { formatLongDate, formatTime, heureDe, todayISO } from '../lib/date'
-import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
+import { stoolPhotoUrl } from '../lib/storage'
+import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dog: Dog }
@@ -34,6 +35,7 @@ export default function AccueilScreen({ dog }: Props) {
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [crisisSheet, setCrisisSheet] = useState(false)
+  const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
 
   useEffect(() => {
     const date = todayISO()
@@ -188,6 +190,15 @@ export default function AccueilScreen({ dog }: Props) {
             <ul className="divide-y divide-slate-200">
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-3 px-4 py-3">
+                  {event.type === 'selle' && event.storage_path && (
+                    <button type="button" onClick={() => setZoomed(event)} className="shrink-0">
+                      <img
+                        src={stoolPhotoUrl(event.storage_path)}
+                        alt=""
+                        className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200"
+                      />
+                    </button>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-slate-900">{event.nom}</span>
                     <span className="block text-xs text-slate-500">
@@ -224,6 +235,12 @@ export default function AccueilScreen({ dog }: Props) {
           onClose={() => setCrisisSheet(false)}
           onSaved={() => setCrisisSheet(false)}
         />
+      )}
+
+      {zoomed && zoomed.storage_path && (
+        <Sheet title={zoomed.nom} onClose={() => setZoomed(null)}>
+          <img src={stoolPhotoUrl(zoomed.storage_path)} alt="" className="w-full rounded-xl" />
+        </Sheet>
       )}
     </div>
   )

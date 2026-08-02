@@ -15,6 +15,9 @@ export type SuiviEvent = {
   note: string | null
   /** Renseigné pour un événement de type traitement : le médicament pris. */
   dog_medication_id: string | null
+  /** Chemin dans le bucket stool-photos. Pour l'instant, seules les selles
+   * peuvent en avoir un. */
+  storage_path: string | null
 }
 
 export type LabValue = {
