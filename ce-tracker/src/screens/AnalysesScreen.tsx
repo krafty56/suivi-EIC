@@ -5,13 +5,14 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, SuiviEvent } from '../lib/types'
+import type { Crise, DailyEntry, FoodEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
 import { Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 
@@ -83,6 +84,7 @@ export default function AnalysesScreen({ dogId }: Props) {
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [crises, setCrises] = useState<Crise[]>([])
+  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export default function AnalysesScreen({ dogId }: Props) {
       // Bornée à la période choisie : sur la totalité de l'historique du
       // chien, une requête sans borne dépassait la limite de lignes de
       // Supabase et coupait silencieusement les événements les plus récents.
-      const [e, c, ev] = await Promise.all([
+      const [e, c, ev, f] = await Promise.all([
         supabase
           .from('daily_entries')
           .select('*')
@@ -134,14 +136,22 @@ export default function AnalysesScreen({ dogId }: Props) {
           .lt('at', finTs)
           .order('at')
           .limit(5000),
+        supabase
+          .from('food_entries')
+          .select('*')
+          .eq('dog_id', dogId)
+          .gte('date_debut', debut)
+          .lte('date_debut', fin)
+          .order('date_debut'),
       ])
-      if (e.error || c.error || ev.error) {
-        setError((e.error ?? c.error ?? ev.error)!.message)
+      if (e.error || c.error || ev.error || f.error) {
+        setError((e.error ?? c.error ?? ev.error ?? f.error)!.message)
         return
       }
       setEntries(e.data as DailyEntry[])
       setCrises(c.data as Crise[])
       setEvents(ev.data as SuiviEvent[])
+      setFoodEntries(f.data as FoodEntry[])
     }
     void load()
   }, [dogId, debut, fin])
@@ -192,6 +202,16 @@ export default function AnalysesScreen({ dogId }: Props) {
       return { ...j, score: duJour ? Math.max(...duJour) : (entry?.score_fecal ?? null) }
     })
   }, [entries, events, fenetre])
+
+  const reperesAlimentation = useMemo(
+    () =>
+      foodEntries.map((f) => ({
+        id: f.id,
+        label: formatShortDate(f.date_debut),
+        nom: [f.marque, f.reference].filter(Boolean).join(' — ') || 'Changement alimentaire',
+      })),
+    [foodEntries],
+  )
 
   const totalReflux = refluxPoints.reduce((s, p) => s + p.compte, 0)
   const totalCrises = crisesPoints.reduce((s, p) => s + p.compte, 0)
@@ -287,9 +307,24 @@ export default function AnalysesScreen({ dogId }: Props) {
                     contentStyle={{ fontSize: 12, borderRadius: 12 }}
                   />
                   <Bar dataKey="compte" name="Reflux" fill="#b4cded" radius={[3, 3, 0, 0]} />
+                  {reperesAlimentation.map((r) => (
+                    <ReferenceLine
+                      key={r.id}
+                      x={r.label}
+                      stroke="#bfcc94"
+                      strokeWidth={2}
+                      strokeDasharray="4 4"
+                      label={{ value: '🍽️', position: 'top', fontSize: 12 }}
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {reperesAlimentation.length > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                🍽️ pointillé = changement alimentaire ({reperesAlimentation.map((r) => r.nom).join(', ')})
+              </p>
+            )}
           </Card>
 
           <Card>
@@ -316,6 +351,9 @@ export default function AnalysesScreen({ dogId }: Props) {
                     contentStyle={{ fontSize: 12, borderRadius: 12 }}
                   />
                   <Bar dataKey="compte" name="Crises" fill="#c0524b" radius={[3, 3, 0, 0]} />
+                  {reperesAlimentation.map((r) => (
+                    <ReferenceLine key={r.id} x={r.label} stroke="#bfcc94" strokeWidth={2} strokeDasharray="4 4" />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -363,6 +401,9 @@ export default function AnalysesScreen({ dogId }: Props) {
                       dot={{ r: 2 }}
                       connectNulls={false}
                     />
+                    {reperesAlimentation.map((r) => (
+                      <ReferenceLine key={r.id} x={r.label} stroke="#bfcc94" strokeWidth={2} strokeDasharray="4 4" />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
