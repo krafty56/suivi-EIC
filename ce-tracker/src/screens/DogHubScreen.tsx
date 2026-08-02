@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import type { Dog } from '../lib/types'
+import { Spinner } from '../components/ui'
 import DogFormScreen from './DogFormScreen'
 import MedicationsScreen from './MedicationsScreen'
 import NotificationsScreen from './NotificationsScreen'
 import SharingScreen from './SharingScreen'
 
-type Vue = 'fiche' | 'medicaments' | 'partage' | 'notifications'
+type Vue = 'fiche' | 'poids' | 'medicaments' | 'partage' | 'notifications'
 
 const VUES: { id: Vue; label: string }[] = [
   { id: 'fiche', label: 'Fiche' },
+  { id: 'poids', label: 'Poids' },
   { id: 'medicaments', label: 'Médicaments' },
   { id: 'partage', label: 'Partage' },
   { id: 'notifications', label: 'Rappels' },
@@ -20,20 +22,25 @@ type Props = {
   onSaved: (dog: Dog) => void
 }
 
-/** Regroupe ce qui se configure une fois : la fiche, le traitement, les liens vétérinaires. */
+// Recharts pèse à lui seul plus que tout le reste de l'application. On le
+// charge seulement quand l'onglet Poids est ouvert, comme pour Analyses.
+const PoidsScreen = lazy(() => import('./PoidsScreen'))
+
+/** Regroupe ce qui se configure une fois : la fiche, le poids, le traitement,
+ * les liens vétérinaires. */
 export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
   const [vue, setVue] = useState<Vue>('fiche')
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-2 px-4 pt-4">
+      <div className="grid grid-cols-5 gap-2 px-4 pt-4">
         {VUES.map((item) => (
           <button
             key={item.id}
             type="button"
             aria-pressed={vue === item.id}
             onClick={() => setVue(item.id)}
-            className={`rounded-xl py-2 text-xs font-semibold transition-colors ${
+            className={`min-w-0 truncate rounded-xl py-2 text-xs font-semibold transition-colors ${
               vue === item.id
                 ? 'bg-brand-700 text-white'
                 : 'bg-white text-slate-700 ring-1 ring-slate-200'
@@ -46,6 +53,11 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
 
       {vue === 'fiche' && (
         <DogFormScreen key={dog.id} dog={dog} ownerId={ownerId} onSaved={onSaved} />
+      )}
+      {vue === 'poids' && (
+        <Suspense fallback={<Spinner label="Chargement du suivi de poids…" />}>
+          <PoidsScreen dog={dog} onDogChange={onSaved} />
+        </Suspense>
       )}
       {vue === 'medicaments' && <MedicationsScreen dogId={dog.id} />}
       {vue === 'partage' && <SharingScreen dogId={dog.id} />}

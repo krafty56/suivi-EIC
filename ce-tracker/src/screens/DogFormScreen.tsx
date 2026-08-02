@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Dog, Weight } from '../lib/types'
+import type { Dog } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
-import { calculerAge, formatShortDate, todayISO } from '../lib/date'
+import { calculerAge, todayISO } from '../lib/date'
 import { Button, Card, ErrorMessage, Field, inputClass } from '../components/ui'
 
 type Props = {
@@ -24,27 +24,12 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
   const [race, setRace] = useState(dog?.race ?? '')
   const [dateNaissance, setDateNaissance] = useState(dog?.date_naissance ?? '')
   const [identification, setIdentification] = useState(dog?.identification ?? '')
-  const [poidsActuel, setPoidsActuel] = useState(dog?.poids_actuel?.toString() ?? '')
   const [poidsIdeal, setPoidsIdeal] = useState(dog?.poids_ideal?.toString() ?? '')
   const [bcs, setBcs] = useState<number | null>(dog?.bcs ?? null)
   const [dateDiagnostic, setDateDiagnostic] = useState(dog?.date_diagnostic ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [historique, setHistorique] = useState<Weight[]>([])
-
-  // La perte de poids est un critère du CIBDAI : elle demande une série, pas
-  // une valeur écrasée à chaque saisie.
-  useEffect(() => {
-    if (!dog) return
-    void supabase
-      .from('weights')
-      .select('*')
-      .eq('dog_id', dog.id)
-      .order('date', { ascending: false })
-      .limit(6)
-      .then(({ data }) => setHistorique((data ?? []) as Weight[]))
-  }, [dog, saved])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -58,7 +43,6 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
       race: race.trim() || null,
       date_naissance: dateNaissance || null,
       identification: identification.trim() || null,
-      poids_actuel: toNumber(poidsActuel),
       poids_ideal: toNumber(poidsIdeal),
       bcs,
       date_diagnostic: dateDiagnostic || null,
@@ -74,18 +58,6 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
     if (dbError) {
       setError(dbError.message)
       return
-    }
-    // Le poids du jour rejoint l'historique, sans quoi la perte de poids
-    // resterait incalculable.
-    const poids = toNumber(poidsActuel)
-    if (poids !== null) {
-      const { error: weightError } = await supabase
-        .from('weights')
-        .upsert({ dog_id: (data as Dog).id, date: todayISO(), poids }, { onConflict: 'dog_id,date' })
-      if (weightError) {
-        setError(weightError.message)
-        return
-      }
     }
 
     setSaved(true)
@@ -138,37 +110,14 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Poids actuel (kg)">
-            <input
-              inputMode="decimal"
-              value={poidsActuel}
-              onChange={(e) => setPoidsActuel(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Poids idéal (kg)">
-            <input
-              inputMode="decimal"
-              value={poidsIdeal}
-              onChange={(e) => setPoidsIdeal(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-        </div>
-
-        {historique.length > 0 && (
-          <div>
-            <p className="mb-1 text-sm font-medium text-slate-700">Derniers poids</p>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
-              {historique.map((mesure) => (
-                <li key={mesure.id} className="tabular-nums">
-                  {formatShortDate(mesure.date)} · {mesure.poids} kg
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <Field label="Poids idéal (kg)" hint="Le poids actuel se saisit dans l’onglet Poids">
+          <input
+            inputMode="decimal"
+            value={poidsIdeal}
+            onChange={(e) => setPoidsIdeal(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
 
         <Field label="Date de diagnostic">
           <input
