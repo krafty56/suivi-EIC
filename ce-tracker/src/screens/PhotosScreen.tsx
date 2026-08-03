@@ -4,8 +4,10 @@ import type { SuiviEvent } from '../lib/types'
 import { resumeDetailsEvenement } from '../data/catalogs'
 import { formatLongDate, heureDe, todayISO } from '../lib/date'
 import { jourDe } from '../lib/journal'
+import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 
 type Props = { dogId: string }
 
@@ -15,6 +17,8 @@ const PERIODES: { jours: number | null; label: string }[] = [
   { jours: 365, label: '1 an' },
   { jours: null, label: 'Tout' },
 ]
+
+const LIMITE_GRATUITE = 20
 
 /** Une date YYYY-MM-DD, n jours avant une autre. */
 function reculerDe(date: string, jours: number): string {
@@ -26,6 +30,7 @@ function reculerDe(date: string, jours: number): string {
 /** Toutes les photos de selle, en grille, pour repasser en revue visuellement
  * une période plutôt que de rouvrir chaque entrée une à une. */
 export default function PhotosScreen({ dogId }: Props) {
+  const { isPremium } = usePremium()
   const [periodeJours, setPeriodeJours] = useState<number | null>(90)
   const [photos, setPhotos] = useState<SuiviEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -84,23 +89,33 @@ export default function PhotosScreen({ dogId }: Props) {
           <p className="text-sm text-slate-500">Aucune photo de selle sur cette période.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-3 gap-1">
-          {photos.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => setZoomed(event)}
-              className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-slate-200"
-            >
-              <img src={stoolPhotoUrl(event.storage_path!)} alt="" className="h-full w-full object-cover" />
-              {event.intensite !== null && (
-                <span className="absolute right-1 bottom-1 rounded-full bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {event.intensite}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-3 gap-1">
+            {(isPremium ? photos : photos.slice(0, LIMITE_GRATUITE)).map((event) => (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => setZoomed(event)}
+                className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-slate-200"
+              >
+                <img src={stoolPhotoUrl(event.storage_path!)} alt="" className="h-full w-full object-cover" />
+                {event.intensite !== null && (
+                  <span className="absolute right-1 bottom-1 rounded-full bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {event.intensite}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          {!isPremium && photos.length > LIMITE_GRATUITE && (
+            <Verrou
+              titre="Galerie complète"
+              description={`Les ${LIMITE_GRATUITE} photos les plus récentes sont affichées. ${
+                photos.length - LIMITE_GRATUITE
+              } photo(s) plus ancienne(s) réservée(s) au premium.`}
+            />
+          )}
+        </>
       )}
 
       {zoomed?.storage_path && (

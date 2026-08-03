@@ -14,14 +14,16 @@ import {
 import { supabase } from '../lib/supabase'
 import type { Crise, DailyEntry, FoodEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
-import { Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
+import { usePremium } from '../lib/premium'
+import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 
 type Props = { dogId: string }
 
 const PERIODES = [
-  { jours: 30, label: '30 j' },
-  { jours: 90, label: '90 j' },
-  { jours: 365, label: '1 an' },
+  { jours: 30, label: '30 j', premium: false },
+  { jours: 90, label: '90 j', premium: true },
+  { jours: 365, label: '1 an', premium: true },
 ]
 
 type Jour = { date: string; label: string }
@@ -77,9 +79,21 @@ function joursEntre(debut: string, fin: string): Jour[] {
 }
 
 export default function AnalysesScreen({ dogId }: Props) {
+  const { isPremium, loading: premiumLoading } = usePremium()
   const [fin, setFin] = useState(() => chargerPeriode().fin)
   const [debut, setDebut] = useState(() => chargerPeriode().debut)
   const [presetActif, setPresetActif] = useState<number | null>(() => chargerPeriode().presetActif)
+  const [verrouOuvert, setVerrouOuvert] = useState(false)
+
+  // Une période étendue ou personnalisée choisie avant de repasser gratuit
+  // (ou persistée depuis avant l'introduction du premium) ne doit pas rester
+  // accessible indéfiniment via le localStorage.
+  useEffect(() => {
+    if (premiumLoading || isPremium || presetActif === 30) return
+    setPresetActif(30)
+    setFin(todayISO())
+    setDebut(reculerDe(todayISO(), 29))
+  }, [isPremium, premiumLoading, presetActif])
 
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [events, setEvents] = useState<SuiviEvent[]>([])
@@ -156,10 +170,32 @@ export default function AnalysesScreen({ dogId }: Props) {
     void load()
   }, [dogId, debut, fin])
 
-  function choisirPreset(jours: number) {
-    setPresetActif(jours)
+  function choisirPreset(periode: (typeof PERIODES)[number]) {
+    if (periode.premium && !isPremium) {
+      setVerrouOuvert(true)
+      return
+    }
+    setPresetActif(periode.jours)
     setFin(todayISO())
-    setDebut(reculerDe(todayISO(), jours - 1))
+    setDebut(reculerDe(todayISO(), periode.jours - 1))
+  }
+
+  function changerDebut(valeur: string) {
+    if (!isPremium) {
+      setVerrouOuvert(true)
+      return
+    }
+    setDebut(valeur)
+    setPresetActif(null)
+  }
+
+  function changerFin(valeur: string) {
+    if (!isPremium) {
+      setVerrouOuvert(true)
+      return
+    }
+    setFin(valeur)
+    setPresetActif(null)
   }
 
   const fenetre = useMemo(() => joursEntre(debut, fin), [debut, fin])
@@ -229,42 +265,42 @@ export default function AnalysesScreen({ dogId }: Props) {
             key={periode.jours}
             type="button"
             aria-pressed={presetActif === periode.jours}
-            onClick={() => choisirPreset(periode.jours)}
+            onClick={() => choisirPreset(periode)}
             className={`rounded-xl py-2 text-sm font-semibold transition-colors ${
               presetActif === periode.jours
                 ? 'bg-brand-700 text-white'
                 : 'bg-white text-slate-700 ring-1 ring-slate-200'
             }`}
           >
+            {periode.premium && !isPremium ? '🔒 ' : ''}
             {periode.label}
           </button>
         ))}
       </div>
 
-      <Card>
+      <Card
+        className={!isPremium ? 'opacity-60' : ''}
+        onClick={() => !isPremium && setVerrouOuvert(true)}
+      >
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Du">
+          <Field label={isPremium ? 'Du' : '🔒 Du'}>
             <input
               type="date"
               value={debut}
               max={fin}
-              onChange={(e) => {
-                setDebut(e.target.value)
-                setPresetActif(null)
-              }}
+              disabled={!isPremium}
+              onChange={(e) => changerDebut(e.target.value)}
               className={inputClass}
             />
           </Field>
-          <Field label="Au">
+          <Field label={isPremium ? 'Au' : '🔒 Au'}>
             <input
               type="date"
               value={fin}
               min={debut}
               max={todayISO()}
-              onChange={(e) => {
-                setFin(e.target.value)
-                setPresetActif(null)
-              }}
+              disabled={!isPremium}
+              onChange={(e) => changerFin(e.target.value)}
               className={inputClass}
             />
           </Field>
@@ -413,6 +449,15 @@ export default function AnalysesScreen({ dogId }: Props) {
             </p>
           </Card>
         </>
+      )}
+
+      {verrouOuvert && (
+        <Sheet title="Analyses étendues" onClose={() => setVerrouOuvert(false)}>
+          <Verrou
+            titre="Analyses étendues"
+            description="Au-delà de 30 jours, ou avec une période personnalisée, les graphiques sont réservés au premium."
+          />
+        </Sheet>
       )}
     </div>
   )

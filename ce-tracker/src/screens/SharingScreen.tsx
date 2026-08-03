@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { VetShare } from '../lib/types'
 import { formatLongDate } from '../lib/date'
+import { usePremium } from '../lib/premium'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 
 export function shareUrl(token: string): string {
   return `${window.location.origin}/?share=${token}`
@@ -11,8 +13,10 @@ export function shareUrl(token: string): string {
 type Props = { dogId: string }
 
 export default function SharingScreen({ dogId }: Props) {
+  const { isPremium } = usePremium()
   const [shares, setShares] = useState<VetShare[] | null>(null)
   const [creating, setCreating] = useState(false)
+  const [verrouOuvert, setVerrouOuvert] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,6 +62,14 @@ export default function SharingScreen({ dogId }: Props) {
     if (share.revoked_at) return { label: 'Révoqué', actif: false }
     if (new Date(share.expires_at) < new Date()) return { label: 'Expiré', actif: false }
     return { label: `Valable jusqu’au ${formatLongDate(share.expires_at.slice(0, 10))}`, actif: true }
+  }
+
+  const actifs = shares.filter((s) => etat(s).actif).length
+  const limiteAtteinte = !isPremium && actifs >= 1
+
+  function ouvrirCreation() {
+    if (limiteAtteinte) setVerrouOuvert(true)
+    else setCreating(true)
   }
 
   return (
@@ -114,8 +126,8 @@ export default function SharingScreen({ dogId }: Props) {
         )
       })}
 
-      <Button type="button" className="w-full" onClick={() => setCreating(true)}>
-        Créer un lien de partage
+      <Button type="button" className="w-full" onClick={ouvrirCreation}>
+        {limiteAtteinte ? '🔒 ' : ''}Créer un lien de partage
       </Button>
 
       {creating && (
@@ -127,6 +139,15 @@ export default function SharingScreen({ dogId }: Props) {
             void load()
           }}
         />
+      )}
+
+      {verrouOuvert && (
+        <Sheet title="Plusieurs vétérinaires" onClose={() => setVerrouOuvert(false)}>
+          <Verrou
+            titre="Plusieurs liens actifs"
+            description="Un lien de partage actif est inclus gratuitement. Passez premium pour partager le dossier avec plusieurs cliniques en même temps."
+          />
+        </Sheet>
       )}
     </div>
   )

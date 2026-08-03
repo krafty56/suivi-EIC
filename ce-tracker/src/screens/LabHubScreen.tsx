@@ -1,5 +1,7 @@
 import { Suspense, lazy, useState } from 'react'
+import { usePremium } from '../lib/premium'
 import { Spinner } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 
 type Vue = 'parametres' | 'comptes-rendus'
 
@@ -15,6 +17,20 @@ const LabReportsScreen = lazy(() => import('./LabReportsScreen'))
 
 export default function LabHubScreen({ dogId }: { dogId: string }) {
   const [vue, setVue] = useState<Vue>('parametres')
+  const { isPremium, loading } = usePremium()
+
+  if (loading) return <Spinner />
+
+  if (!isPremium) {
+    return (
+      <div className="p-4">
+        <Verrou
+          titre="Labo"
+          description="Suivi des paramètres sanguins et des comptes rendus d'analyses, réservé au premium."
+        />
+      </div>
+    )
+  }
 
   return (
     <div>
