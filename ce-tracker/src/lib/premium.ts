@@ -4,7 +4,7 @@ import type { PremiumStatus } from './types'
 
 /** Statut premium de l'utilisateur connecté. Absence de ligne (aucun achat
  * encore synchronisé) équivaut à non-premium plutôt qu'à une erreur. */
-export function usePremium(): { isPremium: boolean; loading: boolean } {
+export function usePremium(): { isPremium: boolean; productId: string | null; loading: boolean } {
   const [status, setStatus] = useState<PremiumStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,5 +26,5 @@ export function usePremium(): { isPremium: boolean; loading: boolean } {
     }
   }, [])
 
-  return { isPremium: status?.is_premium ?? false, loading }
+  return { isPremium: status?.is_premium ?? false, productId: status?.product_id ?? null, loading }
 }

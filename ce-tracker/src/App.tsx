@@ -63,16 +63,18 @@ const AnalysesScreen = lazy(() => import('./screens/AnalysesScreen'))
 /** Statut d'abonnement, visible en permanence dans l'en-tête. À part plutôt
  * qu'appelé directement dans App : usePremium ne doit se monter qu'une fois
  * la session prête, sinon son unique fetch a lieu avant l'authentification
- * et ne se rejoue jamais. */
-function PlanBadge({ onUpgrade }: { onUpgrade: () => void }) {
+ * et ne se rejoue jamais.
+ *
+ * Cliquable dans les deux sens : ouvre le choix de formules si gratuit, ou
+ * la gestion d'abonnement (portail Stripe, passage à l'offre à vie) si déjà
+ * premium — PremiumScreen affiche la vue adaptée selon le statut. */
+function PlanBadge({ onOuvrir }: { onOuvrir: () => void }) {
   const { isPremium, loading } = usePremium()
   if (loading) return null
   return (
     <button
       type="button"
-      onClick={() => {
-        if (!isPremium) onUpgrade()
-      }}
+      onClick={onOuvrir}
       className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
         isPremium ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
       }`}
@@ -166,7 +168,7 @@ export default function App() {
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold text-slate-900">{currentTab.title}</h1>
-            <PlanBadge onUpgrade={() => setPremiumOuvert(true)} />
+            <PlanBadge onOuvrir={() => setPremiumOuvert(true)} />
           </div>
           <div className="flex items-center gap-3">
             {/* En PWA installée sur l'écran d'accueil, il n'y a ni barre
