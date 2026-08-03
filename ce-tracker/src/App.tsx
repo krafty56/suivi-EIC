@@ -168,13 +168,27 @@ export default function App() {
             <h1 className="text-lg font-bold text-slate-900">{currentTab.title}</h1>
             <PlanBadge onUpgrade={() => setPremiumOuvert(true)} />
           </div>
-          <button
-            type="button"
-            onClick={() => void supabase.auth.signOut()}
-            className="text-sm font-medium text-slate-500 hover:text-slate-800"
-          >
-            Déconnexion
-          </button>
+          <div className="flex items-center gap-3">
+            {/* En PWA installée sur l'écran d'accueil, il n'y a ni barre
+                d'adresse ni bouton de rechargement du navigateur : sans ça,
+                impossible de forcer un rafraîchissement des données. */}
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              aria-label="Actualiser"
+              title="Actualiser"
+              className="text-lg leading-none text-slate-500 hover:text-slate-800"
+            >
+              ⟳
+            </button>
+            <button
+              type="button"
+              onClick={() => void supabase.auth.signOut()}
+              className="text-sm font-medium text-slate-500 hover:text-slate-800"
+            >
+              Déconnexion
+            </button>
+          </div>
         </header>
 
         {messagePremium && (
