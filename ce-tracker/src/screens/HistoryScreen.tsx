@@ -3,19 +3,26 @@ import { supabase } from '../lib/supabase'
 import type { Crise, DailyEntry, SuiviEvent, Weight } from '../lib/types'
 import { todayISO } from '../lib/date'
 import { type Categorie, construireJours } from '../lib/journal'
+import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
-import { Card, ErrorMessage, Sheet, Spinner, inputClass } from '../components/ui'
+import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 import JourCard from '../components/JourCard'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dogId: string }
 
 const PERIODES = [
-  { jours: 7, label: '7 j' },
-  { jours: 30, label: '30 j' },
-  { jours: 90, label: '90 j' },
-  { jours: 365, label: '1 an' },
+  { jours: 7, label: '7 j', premium: false },
+  { jours: 30, label: '30 j', premium: false },
+  { jours: 90, label: '90 j', premium: true },
+  { jours: 365, label: '1 an', premium: true },
 ]
+
+/** Périodes prédéfinies au-delà de 30 j, et la période personnalisée
+ * (Du/Au) : ce qui donne un accès étendu à l'historique plutôt que le mois
+ * courant, donc réservé au premium. */
+type ModePeriode = { kind: 'preset'; jours: number } | { kind: 'custom' }
 
 const CATEGORIES: { id: Categorie; label: string }[] = [
   { id: 'symptome', label: 'Symptôme' },
@@ -35,7 +42,11 @@ function reculerDe(date: string, jours: number): string {
 }
 
 export default function HistoryScreen({ dogId }: Props) {
-  const [periodeJours, setPeriodeJours] = useState(30)
+  const { isPremium } = usePremium()
+  const [mode, setMode] = useState<ModePeriode>({ kind: 'preset', jours: 30 })
+  const [debutPerso, setDebutPerso] = useState(reculerDe(todayISO(), 29))
+  const [finPerso, setFinPerso] = useState(todayISO())
+  const [verrouOuvert, setVerrouOuvert] = useState(false)
   const [recherche, setRecherche] = useState('')
   const [categoriesActives, setCategoriesActives] = useState<Set<Categorie>>(new Set())
 
@@ -48,8 +59,24 @@ export default function HistoryScreen({ dogId }: Props) {
   const [editingCrise, setEditingCrise] = useState<Crise | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
-  const fin = todayISO()
-  const debut = reculerDe(fin, periodeJours - 1)
+  const fin = mode.kind === 'preset' ? todayISO() : finPerso
+  const debut = mode.kind === 'preset' ? reculerDe(fin, mode.jours - 1) : debutPerso
+
+  function choisirPeriode(periode: (typeof PERIODES)[number]) {
+    if (periode.premium && !isPremium) {
+      setVerrouOuvert(true)
+      return
+    }
+    setMode({ kind: 'preset', jours: periode.jours })
+  }
+
+  function choisirPersonnalise() {
+    if (!isPremium) {
+      setVerrouOuvert(true)
+      return
+    }
+    setMode({ kind: 'custom' })
+  }
 
   useEffect(() => {
     setEntries(null)
@@ -101,7 +128,7 @@ export default function HistoryScreen({ dogId }: Props) {
       setPoids(p.data as Weight[])
     }
     void load()
-  }, [dogId, periodeJours, debut, fin, refreshSignal])
+  }, [dogId, debut, fin, refreshSignal])
 
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
@@ -145,22 +172,58 @@ export default function HistoryScreen({ dogId }: Props) {
         />
 
         <div className="flex gap-2 overflow-x-auto">
-          {PERIODES.map((periode) => (
-            <button
-              key={periode.jours}
-              type="button"
-              aria-pressed={periodeJours === periode.jours}
-              onClick={() => setPeriodeJours(periode.jours)}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                periodeJours === periode.jours
-                  ? 'bg-brand-700 text-white'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-200'
-              }`}
-            >
-              {periode.label}
-            </button>
-          ))}
+          {PERIODES.map((periode) => {
+            const active = mode.kind === 'preset' && mode.jours === periode.jours
+            return (
+              <button
+                key={periode.jours}
+                type="button"
+                aria-pressed={active}
+                onClick={() => choisirPeriode(periode)}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  active ? 'bg-brand-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'
+                }`}
+              >
+                {periode.premium && !isPremium ? '🔒 ' : ''}
+                {periode.label}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            aria-pressed={mode.kind === 'custom'}
+            onClick={choisirPersonnalise}
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              mode.kind === 'custom' ? 'bg-brand-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'
+            }`}
+          >
+            {!isPremium ? '🔒 ' : ''}Personnalisé
+          </button>
         </div>
+
+        {mode.kind === 'custom' && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Du">
+              <input
+                type="date"
+                value={debutPerso}
+                max={finPerso}
+                onChange={(e) => setDebutPerso(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Au">
+              <input
+                type="date"
+                value={finPerso}
+                min={debutPerso}
+                max={todayISO()}
+                onChange={(e) => setFinPerso(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1.5">
           {CATEGORIES.map((cat) => {
@@ -226,6 +289,15 @@ export default function HistoryScreen({ dogId }: Props) {
             setRefreshSignal((n) => n + 1)
           }}
         />
+      )}
+
+      {verrouOuvert && (
+        <Sheet title="Historique étendu" onClose={() => setVerrouOuvert(false)}>
+          <Verrou
+            titre="Historique étendu"
+            description="Au-delà de 30 jours, ou avec une période personnalisée, l'accès au journal est réservé au premium."
+          />
+        </Sheet>
       )}
     </div>
   )
