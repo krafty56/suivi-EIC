@@ -14,6 +14,7 @@ import LabHubScreen from './screens/LabHubScreen'
 import PremiumScreen from './screens/PremiumScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { PremiumUpgradeProvider } from './lib/premiumUpgrade'
+import { usePremium } from './lib/premium'
 import { ErrorMessage, Spinner } from './components/ui'
 import {
   IconAccueil,
@@ -58,6 +59,28 @@ if (premiumRedirect) {
 // Recharts pèse à lui seul plus que tout le reste de l'application. On le charge
 // seulement quand les analyses sont ouvertes, pour que la saisie quotidienne reste rapide.
 const AnalysesScreen = lazy(() => import('./screens/AnalysesScreen'))
+
+/** Statut d'abonnement, visible en permanence dans l'en-tête. À part plutôt
+ * qu'appelé directement dans App : usePremium ne doit se monter qu'une fois
+ * la session prête, sinon son unique fetch a lieu avant l'authentification
+ * et ne se rejoue jamais. */
+function PlanBadge({ onUpgrade }: { onUpgrade: () => void }) {
+  const { isPremium, loading } = usePremium()
+  if (loading) return null
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!isPremium) onUpgrade()
+      }}
+      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+        isPremium ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+      }`}
+    >
+      {isPremium ? '★ Premium' : 'Gratuit'}
+    </button>
+  )
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -141,7 +164,10 @@ export default function App() {
           La barre d'action collante de la saisie quotidienne se cale ainsi au-dessus des onglets. */}
       <div className="mx-auto flex h-full max-w-md flex-col overflow-hidden bg-slate-50">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-          <h1 className="text-lg font-bold text-slate-900">{currentTab.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-slate-900">{currentTab.title}</h1>
+            <PlanBadge onUpgrade={() => setPremiumOuvert(true)} />
+          </div>
           <button
             type="button"
             onClick={() => void supabase.auth.signOut()}
