@@ -22,6 +22,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 // Événements qui mettent fin à l'accès, indépendamment de expiration_at_ms
 // (une résiliation programmée — CANCELLATION — laisse l'accès actif jusqu'à
 // l'échéance : seule EXPIRATION marque la fin effective).
+//
+// Achat à vie : un produit non-consommable configuré côté RevenueCat avec une
+// durée d'entitlement « Lifetime » envoie expiration_at_ms = null, donc
+// encoreValide reste vrai indéfiniment — aucun traitement particulier requis
+// ici, tant que le produit est bien configuré en Lifetime côté RevenueCat.
 const EVENEMENTS_FIN_ACCES = new Set(['EXPIRATION'])
 
 type EvenementRevenueCat = {
