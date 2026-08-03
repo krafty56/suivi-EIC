@@ -58,6 +58,16 @@ textarea {
   font-size: 16px;
 }
 
+/* input[type=date] sur iOS Safari : le contrôle natif (icône calendrier
+   comprise) peut se peindre plus large que la boîte CSS, débordant de son
+   conteneur quel que soit le réglage de width — min-width:0 ne suffit pas
+   à le contenir. On retire l'habillage natif pour reprendre la main sur le
+   rendu ; le tap pour ouvrir le sélecteur reste fonctionnel sans lui. */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* Export PDF du dossier vétérinaire : le navigateur imprime la page telle quelle. */
 @media print {
   html,
