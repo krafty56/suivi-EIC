@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>appeic — Suivi de l'entéropathie chronique de votre chien</title>
+  <meta name="description" content="Suivi quotidien, journal, analyses et export vétérinaire pour les chiens atteints d'entéropathie chronique. Gratuit pour commencer." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:title" content="appeic — Suivi des entéropathies chroniques" />
+  <meta property="og:description" content="Symptômes, repas, selles, crises, analyses et export vétérinaire — tout au même endroit." />
+  <meta property="og:image" content="/logo-full.png" />
+  <meta property="og:url" content="https://app-eic.fr" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body class="text-slate-900">
+
+  <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+      <img src="/logo-wordmark.png" alt="appeic" class="h-8 w-auto sm:h-9" />
+      <nav class="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
+        <a href="#fonctionnalites" class="hover:text-brand-700">Fonctionnalités</a>
+        <a href="#captures" class="hover:text-brand-700">Aperçu</a>
+        <a href="#tarifs" class="hover:text-brand-700">Tarifs</a>
+        <a href="#installer" class="hover:text-brand-700">Installer</a>
+      </nav>
+      <a
+        href="https://suivi-eic.vercel.app"
+        class="shrink-0 rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+        >Essayer gratuitement</a
+      >
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="overflow-hidden bg-slate-50">
+    <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 md:py-20">
+      <div>
+        <h1 class="text-3xl font-extrabold leading-tight text-slate-900 sm:text-4xl">
+          Le suivi quotidien de l'entéropathie chronique de votre chien
+        </h1>
+        <p class="mt-4 text-lg text-slate-600">
+          Symptômes, repas, selles, crises, analyses et export vétérinaire — tout au même endroit,
+          sur votre téléphone. Conçu par et pour des propriétaires de chiens EIC.
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a
+            href="https://suivi-eic.vercel.app"
+            class="rounded-xl bg-brand-700 px-6 py-3 text-center font-semibold text-white hover:bg-brand-800"
+            >Essayer gratuitement</a
+          >
+          <a
+            href="#tarifs"
+            class="rounded-xl bg-white px-6 py-3 text-center font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-50"
+            >Voir les tarifs</a
+          >
+        </div>
+        <p class="mt-3 text-xs text-slate-500">Aucune carte bancaire requise pour commencer.</p>
+      </div>
+      <div class="flex justify-center">
+        <img
+          src="/screenshots/accueil.png"
+          alt="Écran d'accueil de l'application appeic, avec le compteur de jours sans crise"
+          class="w-full max-w-xs drop-shadow-2xl"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- Fonctionnalités -->
+  <section id="fonctionnalites" class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <h2 class="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">
+      Tout ce qu'il faut pour suivre une EIC au quotidien
+    </h2>
+    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+      Pensé pour les journées chargées : saisir un symptôme prend quelques secondes, et tout
+      s'organise automatiquement en un journal exploitable par votre vétérinaire.
+    </p>
+
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">📝</p>
+        <h3 class="mt-2 font-bold text-slate-900">Saisie quotidienne</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Symptômes, repas, selles (échelle de Purina), activité, traitements — en quelques taps.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">📖</p>
+        <h3 class="mt-2 font-bold text-slate-900">Journal complet</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Chaque journée résumée en une carte, avec recherche et filtres par catégorie.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">📊</p>
+        <h3 class="mt-2 font-bold text-slate-900">Analyses visuelles</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Graphiques d'évolution du score fécal, des reflux et des crises, avec repères des
+          changements alimentaires.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">🩺</p>
+        <h3 class="mt-2 font-bold text-slate-900">Export PDF vétérinaire</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Un journal imprimable, visuellement identique à l'app, prêt pour la consultation.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">📷</p>
+        <h3 class="mt-2 font-bold text-slate-900">Galerie photo des selles</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Toutes les photos regroupées en un coup d'œil pour repérer une tendance.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">💊</p>
+        <h3 class="mt-2 font-bold text-slate-900">Rappels de médicaments</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Une notification au bon moment, sans avoir à s'en souvenir.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">🐾</p>
+        <h3 class="mt-2 font-bold text-slate-900">Fiche complète du chien</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Poids, alimentation, vétérinaires (tap pour appeler ou écrire), tout centralisé.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">🔗</p>
+        <h3 class="mt-2 font-bold text-slate-900">Dossier partagé</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Un lien sécurisé, en lecture seule, pour votre vétérinaire — aucun compte à créer.
+        </p>
+      </article>
+      <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <p class="text-2xl">🚨</p>
+        <h3 class="mt-2 font-bold text-slate-900">Suivi des crises</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Date de début et de fin, compteur de jours sans crise, repères cliniques intégrés.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Captures d'écran -->
+  <section id="captures" class="bg-slate-50 py-16">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+      <h2 class="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">Un aperçu de l'app</h2>
+      <div class="mt-10 grid gap-8 sm:grid-cols-3">
+        <figure class="text-center">
+          <img src="/screenshots/accueil.png" alt="Écran Accueil" class="mx-auto w-full max-w-[260px] rounded-2xl" />
+          <figcaption class="mt-3 text-sm font-semibold text-slate-700">Accueil</figcaption>
+        </figure>
+        <figure class="text-center">
+          <img src="/screenshots/journal.png" alt="Écran Journal" class="mx-auto w-full max-w-[260px] rounded-2xl" />
+          <figcaption class="mt-3 text-sm font-semibold text-slate-700">Journal</figcaption>
+        </figure>
+        <figure class="text-center">
+          <img src="/screenshots/analyses.png" alt="Écran Analyses" class="mx-auto w-full max-w-[260px] rounded-2xl" />
+          <figcaption class="mt-3 text-sm font-semibold text-slate-700">Analyses</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tarifs -->
+  <section id="tarifs" class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <h2 class="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">Tarifs</h2>
+    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+      L'essentiel reste gratuit, sans limite de temps. Le premium débloque le suivi long terme et
+      les outils pensés pour le vétérinaire.
+    </p>
+
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h3 class="font-bold text-slate-900">Gratuit</h3>
+        <p class="mt-2 text-3xl font-extrabold text-slate-900">0 €</p>
+        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+          <li>✓ Saisie quotidienne illimitée</li>
+          <li>✓ Journal sur 7 et 30 jours</li>
+          <li>✓ 20 photos de selles récentes</li>
+          <li>✓ 1 lien de partage vétérinaire</li>
+          <li>✓ Rappels de médicaments</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h3 class="font-bold text-slate-900">Mensuel</h3>
+        <p class="mt-2 text-3xl font-extrabold text-brand-700">4,99 €<span class="text-sm font-medium text-slate-500">/mois</span></p>
+        <p class="mt-1 text-xs text-slate-500">Résiliable à tout moment</p>
+        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+          <li>✓ Tout le gratuit, plus :</li>
+          <li>✓ Journal et analyses sans limite</li>
+          <li>✓ Export PDF vétérinaire</li>
+          <li>✓ Onglet Labo (paramètres sanguins)</li>
+          <li>✓ Galerie photo complète</li>
+          <li>✓ Partage vétérinaire illimité</li>
+        </ul>
+      </div>
+
+      <div class="relative rounded-2xl bg-white p-6 shadow-sm ring-2 ring-brand-700">
+        <span class="absolute -top-3 left-6 rounded-full bg-brand-700 px-3 py-1 text-xs font-bold text-white">Le plus choisi</span>
+        <h3 class="font-bold text-slate-900">Annuel</h3>
+        <p class="mt-2 text-3xl font-extrabold text-brand-700">39,99 €<span class="text-sm font-medium text-slate-500">/an</span></p>
+        <p class="mt-1 text-xs text-slate-500">Soit 3,33 €/mois</p>
+        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+          <li>✓ Tout le premium mensuel</li>
+          <li>✓ ~33 % moins cher que le mensuel</li>
+        </ul>
+      </div>
+
+      <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h3 class="font-bold text-slate-900">À vie</h3>
+        <p class="mt-2 text-3xl font-extrabold text-slate-900">79,99 €</p>
+        <p class="mt-1 text-xs text-slate-500">Un seul paiement</p>
+        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+          <li>✓ Tout le premium</li>
+          <li>✓ Pour toujours, sans renouvellement</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-8 text-center">
+      <a
+        href="https://suivi-eic.vercel.app"
+        class="inline-block rounded-xl bg-brand-700 px-6 py-3 font-semibold text-white hover:bg-brand-800"
+        >Commencer gratuitement</a
+      >
+    </div>
+  </section>
+
+  <!-- Installer l'app -->
+  <section id="installer" class="bg-slate-50 py-16">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6">
+      <h2 class="text-center text-2xl font-extrabold text-slate-900 sm:text-3xl">Installer l'app</h2>
+      <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
+        appeic s'installe directement depuis votre navigateur, sans passer par un store — une
+        icône sur votre écran d'accueil, comme une app classique.
+      </p>
+
+      <div class="mt-8 flex justify-center gap-2">
+        <button type="button" data-os-tab="android" class="os-tab rounded-full px-5 py-2 text-sm font-semibold">Android</button>
+        <button type="button" data-os-tab="ios" class="os-tab rounded-full px-5 py-2 text-sm font-semibold">iPhone / iPad</button>
+      </div>
+
+      <ol data-os-panel="android" class="mt-8 space-y-4">
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">1</span>
+          <p class="text-sm text-slate-700">Ouvrez <strong>suivi-eic.vercel.app</strong> dans <strong>Chrome</strong>.</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">2</span>
+          <p class="text-sm text-slate-700">Touchez le menu <strong>⋮</strong> en haut à droite.</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">3</span>
+          <p class="text-sm text-slate-700">Choisissez <strong>« Installer l'application »</strong> (ou « Ajouter à l'écran d'accueil »).</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">4</span>
+          <p class="text-sm text-slate-700">Confirmez — l'icône appeic apparaît sur votre écran d'accueil.</p>
+        </li>
+      </ol>
+
+      <ol data-os-panel="ios" class="mt-8 hidden space-y-4">
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">1</span>
+          <p class="text-sm text-slate-700">Ouvrez <strong>suivi-eic.vercel.app</strong> dans <strong>Safari</strong> (obligatoire, ça ne fonctionne pas depuis Chrome sur iOS).</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">2</span>
+          <p class="text-sm text-slate-700">Touchez le bouton <strong>Partager</strong> (carré avec une flèche vers le haut), en bas de l'écran.</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">3</span>
+          <p class="text-sm text-slate-700">Faites défiler et choisissez <strong>« Sur l'écran d'accueil »</strong>.</p>
+        </li>
+        <li class="flex gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">4</span>
+          <p class="text-sm text-slate-700">Touchez <strong>Ajouter</strong> — l'icône appeic apparaît sur votre écran d'accueil.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="border-t border-slate-200 bg-white py-10">
+    <div class="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 text-center sm:px-6">
+      <img src="/logo-wordmark.png" alt="appeic" class="h-7 w-auto" />
+      <p class="text-sm text-slate-500">Suivi des entéropathies chroniques — les données restent déclaratives, seul votre vétérinaire pose un diagnostic.</p>
+      <p class="text-xs text-slate-400">© 2026 appeic</p>
+    </div>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

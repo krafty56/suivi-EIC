@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/* Même palette « Bleu et sauge » que l'app, pour une continuité visuelle
+   entre la vitrine et le produit. */
+@theme {
+  --color-brand-50: #bfcc94;
+  --color-brand-100: #b4cded;
+  --color-brand-200: #bfcc94;
+  --color-brand-600: #344966;
+  --color-brand-700: #344966;
+  --color-brand-800: #0d1821;
+
+  --color-slate-50: #f0f4ef;
+  --color-slate-100: rgb(13 24 33 / 0.06);
+  --color-slate-200: rgb(13 24 33 / 0.11);
+  --color-slate-300: rgb(13 24 33 / 0.2);
+  --color-slate-400: rgb(13 24 33 / 0.42);
+  --color-slate-500: rgb(13 24 33 / 0.6);
+  --color-slate-600: rgb(13 24 33 / 0.68);
+  --color-slate-700: rgb(13 24 33 / 0.8);
+  --color-slate-800: rgb(13 24 33 / 0.9);
+  --color-slate-900: #0d1821;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #fff;
+  color: #0d1821;
+}
