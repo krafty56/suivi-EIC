@@ -22,9 +22,19 @@ const PRICE_IDS: Record<Plan, string | undefined> = {
   lifetime: Deno.env.get('STRIPE_PRICE_LIFETIME'),
 }
 
+// Appelée depuis le navigateur (contrairement à stripe-webhook, qui n'est
+// appelée que par Stripe) : sans ces en-têtes, le préflight OPTIONS échoue
+// et supabase-js ne voit qu'une erreur réseau générique.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
+
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return new Response('Unauthorized', { status: 401 })
+  if (!authHeader) return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS })
 
   // Client au nom de l'appelant (pas service_role) : auth.getUser() vérifie
   // le jeton et échoue proprement s'il est invalide ou expiré.
@@ -32,11 +42,13 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   })
   const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData.user) return new Response('Unauthorized', { status: 401 })
+  if (userError || !userData.user) {
+    return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS })
+  }
 
   const { plan, origin } = (await req.json()) as { plan: Plan; origin: string }
   const priceId = PRICE_IDS[plan]
-  if (!priceId) return new Response('Offre inconnue', { status: 400 })
+  if (!priceId) return new Response('Offre inconnue', { status: 400, headers: CORS_HEADERS })
 
   const session = await stripe.checkout.sessions.create({
     mode: plan === 'lifetime' ? 'payment' : 'subscription',
@@ -48,6 +60,6 @@ Deno.serve(async (req) => {
   })
 
   return new Response(JSON.stringify({ url: session.url }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 })
