@@ -37,8 +37,12 @@ export function Field({
   )
 }
 
+// min-w-0 est nécessaire pour type="date" : sans lui, un input[type=date]
+// garde sa largeur de contenu intrinsèque (texte de la date + icône native)
+// et déborde de son conteneur au lieu de respecter w-full, surtout visible
+// sur iOS Safari selon la largeur d'écran et la taille de texte système.
 export const inputClass =
-  'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+  'w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
 
 export function Button({
   children,
