@@ -4,7 +4,7 @@ import { Button, ErrorMessage, Field, inputClass } from '../components/ui'
 import Logo from '../components/Logo'
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -16,6 +16,19 @@ export default function AuthScreen() {
     setError(null)
     setInfo(null)
     setBusy(true)
+
+    if (mode === 'forgot') {
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      })
+      setBusy(false)
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+      setInfo('Email envoyé si un compte existe avec cette adresse. Suivez le lien reçu pour choisir un nouveau mot de passe.')
+      return
+    }
 
     const { error: authError, data } =
       mode === 'signin'
@@ -53,17 +66,33 @@ export default function AuthScreen() {
           />
         </Field>
 
-        <Field label="Mot de passe">
-          <input
-            type="password"
-            required
-            minLength={6}
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
+        {mode !== 'forgot' && (
+          <Field label="Mot de passe">
+            <input
+              type="password"
+              required
+              minLength={6}
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        )}
+
+        {mode === 'signin' && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode('forgot')
+              setError(null)
+              setInfo(null)
+            }}
+            className="text-sm font-medium text-brand-700 underline"
+          >
+            Mot de passe oublié ?
+          </button>
+        )}
 
         <ErrorMessage>{error}</ErrorMessage>
         {info && (
@@ -73,20 +102,30 @@ export default function AuthScreen() {
         )}
 
         <Button type="submit" disabled={busy} className="w-full">
-          {busy ? 'Un instant…' : mode === 'signin' ? 'Se connecter' : 'Créer mon compte'}
+          {busy
+            ? 'Un instant…'
+            : mode === 'signin'
+              ? 'Se connecter'
+              : mode === 'signup'
+                ? 'Créer mon compte'
+                : 'Envoyer le lien'}
         </Button>
       </form>
 
       <button
         type="button"
         onClick={() => {
-          setMode(mode === 'signin' ? 'signup' : 'signin')
+          setMode(mode === 'signup' ? 'signin' : mode === 'forgot' ? 'signin' : 'signup')
           setError(null)
           setInfo(null)
         }}
         className="mt-6 text-sm font-medium text-brand-700 underline"
       >
-        {mode === 'signin' ? 'Pas encore de compte ? Créer un compte' : 'J’ai déjà un compte'}
+        {mode === 'signup'
+          ? 'J’ai déjà un compte'
+          : mode === 'forgot'
+            ? 'Retour à la connexion'
+            : 'Pas encore de compte ? Créer un compte'}
       </button>
     </div>
   )

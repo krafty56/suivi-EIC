@@ -12,6 +12,7 @@ import ExportPdfScreen from './screens/ExportPdfScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabHubScreen from './screens/LabHubScreen'
 import PremiumScreen from './screens/PremiumScreen'
+import ResetPasswordScreen from './screens/ResetPasswordScreen'
 import SharedDossierScreen from './screens/SharedDossierScreen'
 import { PremiumUpgradeProvider } from './lib/premiumUpgrade'
 import { usePremium } from './lib/premium'
@@ -94,6 +95,10 @@ export default function App() {
   const [exportOuvert, setExportOuvert] = useState(false)
   const [premiumOuvert, setPremiumOuvert] = useState(false)
   const [messagePremium, setMessagePremium] = useState(premiumRedirect)
+  // Le lien « mot de passe oublié » ouvre une session normalement, mais ce
+  // n'est pas une vraie connexion : sans ce garde-fou, l'utilisateur passerait
+  // directement dans l'app au lieu de choisir son nouveau mot de passe.
+  const [recuperationMotDePasse, setRecuperationMotDePasse] = useState(false)
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -101,8 +106,9 @@ export default function App() {
       setAuthReady(true)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
+      if (event === 'PASSWORD_RECOVERY') setRecuperationMotDePasse(true)
     })
 
     return () => listener.subscription.unsubscribe()
@@ -136,6 +142,9 @@ export default function App() {
   if (shareToken) return <SharedDossierScreen token={shareToken} />
 
   if (!authReady) return <Spinner />
+  if (recuperationMotDePasse) {
+    return <ResetPasswordScreen onDone={() => setRecuperationMotDePasse(false)} />
+  }
   if (!session) return <AuthScreen />
   if (!dogLoaded) return <Spinner />
 
