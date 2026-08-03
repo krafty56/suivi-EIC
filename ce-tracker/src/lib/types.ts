@@ -190,3 +190,10 @@ export type Veterinaire = {
   telephone: string | null
   email: string | null
 }
+
+/** Tenu à jour côté serveur par le webhook RevenueCat (voir premium_status). */
+export type PremiumStatus = {
+  is_premium: boolean
+  product_id: string | null
+  expires_at: string | null
+}
