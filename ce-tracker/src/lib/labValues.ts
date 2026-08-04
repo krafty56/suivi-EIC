@@ -200,6 +200,73 @@ export const UNITES_LABO: string[] = [
   '%',
 ]
 
+// Marques diacritiques combinantes (U+0300–U+036F) laissées par normalize('NFD').
+const DIACRITIQUES = /[̀-ͯ]/g
+
+/** Minuscules, sans accents : pour comparer un nom de paramètre saisi
+ * librement à un mot-clé connu, insensible à la casse et aux accents. */
+export function normaliser(texte: string): string {
+  return texte.normalize('NFD').replace(DIACRITIQUES, '').toLowerCase().trim()
+}
+
+/** Mots-clés (déjà normalisés) reconnus pour chaque catégorie — les mêmes
+ * paramètres que ceux soufflés à l'IA d'extraction, pour suggérer la même
+ * catégorie qu'on tape le nom à la main ou qu'on le corrige après lecture. */
+const MOTS_CLES_CATEGORIE: { motsCles: string[]; category: string }[] = [
+  { motsCles: ['cpl', 'lipase pancreatique'], category: 'digestive' },
+  { motsCles: ['tli', 'trypsine'], category: 'digestive' },
+  { motsCles: ['folate'], category: 'digestive' },
+  { motsCles: ['cobalamine', 'vitamine b12', 'b12'], category: 'digestive' },
+  { motsCles: ['proteine totale', 'proteines totales'], category: 'proteins' },
+  { motsCles: ['albumine'], category: 'proteins' },
+  { motsCles: ['globuline'], category: 'proteins' },
+  { motsCles: ['ratio a/g', 'ratio albumine'], category: 'proteins' },
+  { motsCles: ['alat', 'alt', 'transaminase'], category: 'liver' },
+  { motsCles: ['asat', 'ast'], category: 'liver' },
+  { motsCles: ['pal', 'phosphatase alcaline'], category: 'liver' },
+  { motsCles: ['ggt', 'gamma gt'], category: 'liver' },
+  { motsCles: ['bilirubine'], category: 'liver' },
+  { motsCles: ['acide biliaire'], category: 'liver' },
+  { motsCles: ['uree', 'bun'], category: 'kidney' },
+  { motsCles: ['creatinine'], category: 'kidney' },
+  { motsCles: ['sdma'], category: 'kidney' },
+  { motsCles: ['hematocrite', 'ht ', 'vgm', 'tcmh', 'ccmh'], category: 'hematology' },
+  { motsCles: ['hemoglobine'], category: 'hematology' },
+  { motsCles: ['leucocyte', 'globule blanc'], category: 'hematology' },
+  { motsCles: ['neutrophile'], category: 'hematology' },
+  { motsCles: ['lymphocyte'], category: 'hematology' },
+  { motsCles: ['monocyte'], category: 'hematology' },
+  { motsCles: ['eosinophile'], category: 'hematology' },
+  { motsCles: ['plaquette'], category: 'hematology' },
+  { motsCles: ['erythrocyte', 'globule rouge'], category: 'hematology' },
+  { motsCles: ['sodium', 'na '], category: 'electrolytes' },
+  { motsCles: ['potassium', 'kaliemie'], category: 'electrolytes' },
+  { motsCles: ['chlore', 'chlorure'], category: 'electrolytes' },
+  { motsCles: ['calcium', 'calcemie'], category: 'electrolytes' },
+  { motsCles: ['phosphore', 'phosphatemie'], category: 'electrolytes' },
+  { motsCles: ['magnesium'], category: 'electrolytes' },
+  { motsCles: ['glucose', 'glycemie'], category: 'metabolic' },
+  { motsCles: ['cholesterol'], category: 'metabolic' },
+  { motsCles: ['triglyceride'], category: 'metabolic' },
+  { motsCles: ['fructosamine'], category: 'metabolic' },
+  { motsCles: ['crp', 'proteine c-reactive', 'c reactive'], category: 'inflammation' },
+  { motsCles: ['fibrinogene'], category: 'inflammation' },
+  { motsCles: ['t4', 'thyroxine'], category: 'endocrine' },
+  { motsCles: ['tsh'], category: 'endocrine' },
+  { motsCles: ['cortisol'], category: 'endocrine' },
+]
+
+/** Devine la catégorie d'un paramètre à partir de son nom, en saisie manuelle
+ * comme en correction après lecture — même logique que celle soufflée à
+ * l'IA d'extraction, appliquée ici en local. Null si aucun mot-clé connu ne
+ * correspond : mieux vaut laisser la catégorie vide qu'en deviner une fausse. */
+export function suggererCategorie(nomParametre: string): string | null {
+  const n = normaliser(nomParametre)
+  if (!n) return null
+  const trouve = MOTS_CLES_CATEGORIE.find(({ motsCles }) => motsCles.some((mc) => n.includes(mc)))
+  return trouve?.category ?? null
+}
+
 export const CATEGORIE_LABELS: Record<string, string> = {
   digestive: 'Digestif / pancréas',
   hematology: 'Hématologie',

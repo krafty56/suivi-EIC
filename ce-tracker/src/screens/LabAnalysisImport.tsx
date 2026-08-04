@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { LabValue } from '../lib/types'
-import { CATEGORIE_LABELS, calculerFlag, parseValeur } from '../lib/labValues'
+import { CATEGORIE_LABELS, calculerFlag, normaliser, parseValeur, suggererCategorie } from '../lib/labValues'
 import { todayISO } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 import { UniteSelect } from '../components/UniteSelect'
@@ -24,18 +24,8 @@ type LigneProposee = {
   ref_high: number | null
 }
 
-// Marques diacritiques combinantes (U+0300–U+036F) laissées par normalize('NFD').
-const DIACRITIQUES = /[̀-ͯ]/g
-
 function slugify(texte: string): string {
-  return (
-    texte
-      .normalize('NFD')
-      .replace(DIACRITIQUES, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '') || 'parametre'
-  )
+  return normaliser(texte).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'parametre'
 }
 
 export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Props) {
@@ -133,7 +123,19 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
   }
 
   function modifierLigne(cle: string, patch: Partial<LigneProposee>) {
-    setLignes((ls) => ls.map((l) => (l.cle === cle ? { ...l, ...patch } : l)))
+    setLignes((ls) =>
+      ls.map((l) => {
+        if (l.cle !== cle) return l
+        const ligne = { ...l, ...patch }
+        // Suggestion automatique à la frappe du nom, jamais si une catégorie a
+        // déjà été choisie (par l'IA ou à la main) : on ne veut pas écraser un
+        // choix déjà fait.
+        if (patch.parameter_label !== undefined && l.category === null) {
+          ligne.category = suggererCategorie(patch.parameter_label)
+        }
+        return ligne
+      }),
+    )
   }
 
   function supprimerLigne(cle: string) {
