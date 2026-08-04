@@ -3,7 +3,7 @@ import { EMOJI_CRISE } from '../data/emoji'
 import { formatLongDate, formatShortDate } from '../lib/date'
 import { type Categorie, type Gravite, type Jour, texteLigne } from '../lib/journal'
 import { stoolPhotoUrl } from '../lib/storage'
-import type { Crise, SuiviEvent } from '../lib/types'
+import type { Absence, Crise, SuiviEvent } from '../lib/types'
 import { Card } from './ui'
 
 const BARRE_GRAVITE: Record<Gravite, string> = {
@@ -39,6 +39,7 @@ type Props = {
   onDeletePoids?: (id: string) => void
   onZoom?: (event: SuiviEvent) => void
   onEditCrise?: (crise: Crise) => void
+  onEditAbsence?: (absence: Absence) => void
 }
 
 /** Carte d'une journée : badges de résumé, crise éventuelle, puis chaque
@@ -54,6 +55,7 @@ export default function JourCard({
   onDeletePoids,
   onZoom,
   onEditCrise,
+  onEditAbsence,
 }: Props) {
   const lignesFiltrees = jour.lignes.filter((ligne) => {
     if (categoriesActives.size > 0 && !categoriesActives.has(ligne.categorie)) return false
@@ -73,7 +75,21 @@ export default function JourCard({
       crise.changements.some((c) => correspond(CHANGEMENT_OPTIONS.find((o) => o.value === c)?.label ?? c, recherche)),
   )
 
-  if (lignesFiltrees.length === 0 && crisesFiltrees.length === 0) return null
+  const absencesFiltrees = jour.absences.filter(
+    (absence) => recherche.trim() === '' || correspond(absence.note ?? '', recherche),
+  )
+
+  // Une absence doit rester visible même sans autre saisie ce jour-là — sauf
+  // pendant une recherche textuelle, où un jour sans rien à montrer n'a pas
+  // à apparaître juste parce qu'il tombe dans la période.
+  const jourAbsentSansRecherche = jour.absenceActive && recherche.trim() === ''
+  if (
+    lignesFiltrees.length === 0 &&
+    crisesFiltrees.length === 0 &&
+    absencesFiltrees.length === 0 &&
+    !jourAbsentSansRecherche
+  )
+    return null
 
   return (
     <Card className="overflow-hidden p-0 break-inside-avoid">
@@ -85,6 +101,7 @@ export default function JourCard({
               {formatLongDate(jour.date)}
             </p>
             <div className="flex flex-wrap gap-1.5">
+              {jour.absenceActive && <Badge tone="slate">🧳 Absence</Badge>}
               {jour.resume.reflux > 0 && <Badge tone="slate">{jour.resume.reflux} reflux</Badge>}
               {jour.resume.selleScore !== null && <Badge tone="brand">selle {jour.resume.selleScore}/7</Badge>}
               {jour.resume.vomissements > 0 && (
@@ -94,6 +111,32 @@ export default function JourCard({
               )}
             </div>
           </div>
+
+          {absencesFiltrees.map((absence) => {
+            const contenu = (
+              <>
+                <p className="text-sm font-bold text-slate-700">🧳 Absence signalée</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">
+                  {absence.date_fin ? `Jusqu’au ${formatShortDate(absence.date_fin)}` : 'En cours'}
+                </p>
+                {absence.note && <p className="mt-0.5 text-sm text-slate-700">{absence.note}</p>}
+              </>
+            )
+            return onEditAbsence ? (
+              <button
+                key={absence.id}
+                type="button"
+                onClick={() => onEditAbsence(absence)}
+                className="mb-1.5 w-full rounded-xl bg-slate-100 px-3 py-2 text-left"
+              >
+                {contenu}
+              </button>
+            ) : (
+              <div key={absence.id} className="mb-1.5 rounded-xl bg-slate-100 px-3 py-2">
+                {contenu}
+              </div>
+            )
+          })}
 
           {crisesFiltrees.map((crise) => {
             const contenu = (

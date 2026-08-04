@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, Dog, DogMedication, FoodEntry, SuiviEvent, Weight } from '../lib/types'
+import type { Absence, Crise, DailyEntry, Dog, DogMedication, FoodEntry, SuiviEvent, Weight } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
 import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO, veilleDe } from '../lib/date'
 import { construireJours } from '../lib/journal'
@@ -40,6 +40,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
   const [medications, setMedications] = useState<DogMedication[]>([])
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [crises, setCrises] = useState<Crise[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [poids, setPoids] = useState<Weight[]>([])
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
@@ -61,7 +62,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
     const finTs = finExclusive.toISOString()
 
     async function load() {
-      const [m, e, c, ev, p, f] = await Promise.all([
+      const [m, e, c, a, ev, p, f] = await Promise.all([
         supabase.from('dog_medications').select('*').eq('dog_id', dog.id).order('actif', { ascending: false }),
         supabase
           .from('daily_entries')
@@ -75,6 +76,14 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
         // résolue après le début de la fenêtre) doit rester visible.
         supabase
           .from('crises')
+          .select('*')
+          .eq('dog_id', dog.id)
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
+        // Même logique de chevauchement que les crises.
+        supabase
+          .from('absences')
           .select('*')
           .eq('dog_id', dog.id)
           .lte('date_debut', fin)
@@ -101,6 +110,9 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
       setMedications(m.data as DogMedication[])
       setEntries(e.data as DailyEntry[])
       setCrises(c.data as Crise[])
+      // Erreur ignorée plutôt que bloquante : le reste du journal exporté ne
+      // doit pas dépendre du déploiement de la table absences.
+      setAbsences(a.error ? [] : (a.data as Absence[]))
       setEvents(ev.data as SuiviEvent[])
       setPoids(p.data as Weight[])
       setFoodEntries(f.data as FoodEntry[])
@@ -111,8 +123,8 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
   const jours = useMemo(
-    () => construireJours(entries ?? [], crises, events, poids, debut, fin),
-    [entries, crises, events, poids, debut, fin],
+    () => construireJours(entries ?? [], crises, absences, events, poids, debut, fin),
+    [entries, crises, absences, events, poids, debut, fin],
   )
 
   const actifs = medications.filter((m) => m.actif)

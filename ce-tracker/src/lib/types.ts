@@ -112,6 +112,18 @@ export type Crise = {
   note: string | null
 }
 
+/** Période où le propriétaire était absent : aucun symptôme n'a pu être
+ * observé pendant ce temps, à distinguer d'une période réellement calme
+ * dans le journal, les graphiques et le dossier vétérinaire. Même forme que
+ * Crise : date_fin nulle tant que l'absence est en cours. */
+export type Absence = {
+  id: string
+  dog_id: string
+  date_debut: string
+  date_fin: string | null
+  note: string | null
+}
+
 export type VetShare = {
   id: string
   dog_id: string
@@ -168,6 +180,7 @@ export type SharedDossier = {
   medications: DogMedication[]
   entries: DailyEntry[]
   crises: Crise[]
+  absences: Absence[]
   events: SuiviEvent[]
   lab_reports: LabReport[]
   lab_values: LabValue[]

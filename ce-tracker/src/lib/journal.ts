@@ -1,7 +1,7 @@
 import { resumeDetailsEvenement } from '../data/catalogs'
 import { emojiEvenement, EMOJI_POIDS } from '../data/emoji'
 import { heureDe } from './date'
-import type { Crise, DailyEntry, SuiviEvent, Weight } from './types'
+import type { Absence, Crise, DailyEntry, SuiviEvent, Weight } from './types'
 
 /** Jour local d'un horodatage, au format YYYY-MM-DD. */
 export function jourDe(at: string): string {
@@ -100,11 +100,36 @@ export function graviteJour(events: SuiviEvent[], entry: DailyEntry | null, cris
   return 'neutre'
 }
 
-/** Une crise dure de date_debut à date_fin (ou jusqu'à aujourd'hui si encore
- * en cours) : `borne` est la fin à considérer pour une crise sans date_fin,
- * typiquement la fenêtre affichée (déjà plafonnée à aujourd'hui partout). */
-function estActiveLe(crise: Crise, date: string, borne: string): boolean {
-  return date >= crise.date_debut && date <= (crise.date_fin ?? borne)
+/** Une crise (ou une absence) dure de date_debut à date_fin (ou jusqu'à
+ * aujourd'hui si encore en cours) : `borne` est la fin à considérer sans
+ * date_fin, typiquement la fenêtre affichée (déjà plafonnée à aujourd'hui
+ * partout). Exportée pour le même besoin que joursDeLEpisode côté dossier
+ * partagé. */
+export function estActiveLe(episode: { date_debut: string; date_fin: string | null }, date: string, borne: string): boolean {
+  return date >= episode.date_debut && date <= (episode.date_fin ?? borne)
+}
+
+/** Tous les jours d'un épisode [date_debut, date_fin] compris dans la
+ * fenêtre [debut, fin] — pour qu'une absence produise une carte chaque
+ * jour, même sans autre saisie, plutôt que de disparaître silencieusement
+ * du journal. Exportée : le dossier partagé au vétérinaire construit sa
+ * propre liste de jours (sans passer par construireJours) mais a besoin de
+ * la même expansion. */
+export function joursDeLEpisode(
+  episode: { date_debut: string; date_fin: string | null },
+  debut: string,
+  fin: string,
+): string[] {
+  const jours: string[] = []
+  let curseur = episode.date_debut > debut ? episode.date_debut : debut
+  const borneFin = episode.date_fin && episode.date_fin < fin ? episode.date_fin : fin
+  while (curseur <= borneFin) {
+    jours.push(curseur)
+    const d = new Date(`${curseur}T00:00:00`)
+    d.setDate(d.getDate() + 1)
+    curseur = d.toISOString().slice(0, 10)
+  }
+  return jours
 }
 
 export type Jour = {
@@ -112,24 +137,32 @@ export type Jour = {
   /** Crises qui ont démarré ce jour-là : c'est ce qui porte la bannière
    * détaillée, une seule fois par crise plutôt qu'à chaque jour de l'épisode. */
   crises: Crise[]
+  /** Même logique que crises, pour la bannière d'absence. */
+  absences: Absence[]
+  /** true si ce jour tombe dans une absence en cours, même hors du jour de
+   * début : c'est ce qui porte le badge, répété sur toute la durée. */
+  absenceActive: boolean
   lignes: LigneJour[]
   resume: ReturnType<typeof resumeJour>
   gravite: Gravite
 }
 
-/** Regroupe entrées, crises, événements et pesées par jour local, sur une
- * fenêtre [debut, fin] incluse. events peut déborder cette fenêtre en amont
- * (pour calculer le délai repas du premier jour) : seuls les jours >= debut
- * donnent lieu à une carte. Partagé entre le Journal et l'export PDF, pour
- * que les deux affichent exactement le même regroupement.
+/** Regroupe entrées, crises, absences, événements et pesées par jour local,
+ * sur une fenêtre [debut, fin] incluse. events peut déborder cette fenêtre
+ * en amont (pour calculer le délai repas du premier jour) : seuls les jours
+ * >= debut donnent lieu à une carte. Partagé entre le Journal et l'export
+ * PDF, pour que les deux affichent exactement le même regroupement.
  *
  * Une crise est un épisode, pas un jour isolé : chaque jour de l'épisode
  * compte pour le badge et la gravité (resume/gravite reçoivent les crises
  * actives ce jour-là), mais la bannière détaillée n'apparaît que le jour de
- * début, pour ne pas la répéter à l'identique sur toute la durée. */
+ * début, pour ne pas la répéter à l'identique sur toute la durée. Une
+ * absence suit le même principe, à la différence près qu'elle doit aussi
+ * faire apparaître une carte les jours qui n'auraient sinon aucune saisie. */
 export function construireJours(
   entries: DailyEntry[],
   crises: Crise[],
+  absences: Absence[],
   events: SuiviEvent[],
   poids: Weight[],
   debut: string,
@@ -140,6 +173,7 @@ export function construireJours(
     ...crises.map((c) => c.date_debut),
     ...events.filter((e) => jourDe(e.at) >= debut).map((e) => jourDe(e.at)),
     ...poids.map((p) => p.date),
+    ...absences.flatMap((a) => joursDeLEpisode(a, debut, fin)),
   ])
   return [...dates]
     .filter((date) => date >= debut && date <= fin)
@@ -149,10 +183,14 @@ export function construireJours(
       const poidsJour = poids.filter((p) => p.date === date)
       const crisesActives = crises.filter((c) => estActiveLe(c, date, fin))
       const crisesDebut = crises.filter((c) => c.date_debut === date)
+      const absencesActives = absences.filter((a) => estActiveLe(a, date, fin))
+      const absencesDebut = absences.filter((a) => a.date_debut === date)
       const entryJour = entries.find((e) => e.date === date) ?? null
       return {
         date,
         crises: crisesDebut,
+        absences: absencesDebut,
+        absenceActive: absencesActives.length > 0,
         lignes: lignesJour(evenementsJour, poidsJour),
         resume: resumeJour(evenementsJour, entryJour, crisesActives),
         gravite: graviteJour(evenementsJour, entryJour, crisesActives),

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, SuiviEvent, Weight } from '../lib/types'
+import type { Absence, Crise, DailyEntry, SuiviEvent, Weight } from '../lib/types'
 import { todayISO } from '../lib/date'
 import { type Categorie, construireJours } from '../lib/journal'
 import { usePremium } from '../lib/premium'
@@ -8,6 +8,7 @@ import { stoolPhotoUrl } from '../lib/storage'
 import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 import JourCard from '../components/JourCard'
+import AbsenceSheet from './AbsenceSheet'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dogId: string }
@@ -52,11 +53,13 @@ export default function HistoryScreen({ dogId }: Props) {
 
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [crises, setCrises] = useState<Crise[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [poids, setPoids] = useState<Weight[]>([])
   const [error, setError] = useState<string | null>(null)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [editingCrise, setEditingCrise] = useState<Crise | null>(null)
+  const [editingAbsence, setEditingAbsence] = useState<Absence | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
   const fin = mode.kind === 'preset' ? todayISO() : finPerso
@@ -89,7 +92,7 @@ export default function HistoryScreen({ dogId }: Props) {
     const finTs = finExclusive.toISOString()
 
     async function load() {
-      const [e, c, ev, p] = await Promise.all([
+      const [e, c, a, ev, p] = await Promise.all([
         supabase
           .from('daily_entries')
           .select('*')
@@ -102,6 +105,14 @@ export default function HistoryScreen({ dogId }: Props) {
         // résolue après le début de la fenêtre) doit rester visible.
         supabase
           .from('crises')
+          .select('*')
+          .eq('dog_id', dogId)
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
+        // Même logique de chevauchement que les crises.
+        supabase
+          .from('absences')
           .select('*')
           .eq('dog_id', dogId)
           .lte('date_debut', fin)
@@ -124,6 +135,9 @@ export default function HistoryScreen({ dogId }: Props) {
       }
       setEntries(e.data as DailyEntry[])
       setCrises(c.data as Crise[])
+      // Erreur ignorée plutôt que bloquante : le reste du journal ne doit
+      // pas dépendre du déploiement de la table absences.
+      setAbsences(a.error ? [] : (a.data as Absence[]))
       setEvents(ev.data as SuiviEvent[])
       setPoids(p.data as Weight[])
     }
@@ -133,8 +147,8 @@ export default function HistoryScreen({ dogId }: Props) {
   const repasEvents = useMemo(() => events.filter((e) => e.type === 'repas'), [events])
 
   const jours = useMemo(
-    () => construireJours(entries ?? [], crises, events, poids, debut, fin),
-    [entries, crises, events, poids, debut, fin],
+    () => construireJours(entries ?? [], crises, absences, events, poids, debut, fin),
+    [entries, crises, absences, events, poids, debut, fin],
   )
 
   async function supprimer(id: string) {
@@ -268,6 +282,7 @@ export default function HistoryScreen({ dogId }: Props) {
               onDeletePoids={supprimerPoids}
               onZoom={setZoomed}
               onEditCrise={setEditingCrise}
+              onEditAbsence={setEditingAbsence}
             />
           ))}
         </div>
@@ -277,6 +292,18 @@ export default function HistoryScreen({ dogId }: Props) {
         <Sheet title={zoomed.nom} onClose={() => setZoomed(null)}>
           <img src={stoolPhotoUrl(zoomed.storage_path)} alt="" className="w-full rounded-xl" />
         </Sheet>
+      )}
+
+      {editingAbsence && (
+        <AbsenceSheet
+          dogId={dogId}
+          absence={editingAbsence}
+          onClose={() => setEditingAbsence(null)}
+          onSaved={() => {
+            setEditingAbsence(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
       )}
 
       {editingCrise && (

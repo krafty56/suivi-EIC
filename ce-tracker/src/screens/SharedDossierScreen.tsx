@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, LabReport, SharedDossier, SuiviEvent } from '../lib/types'
+import type { Absence, Crise, DailyEntry, LabReport, SharedDossier, SuiviEvent } from '../lib/types'
 import {
   APPETIT_OPTIONS,
   BCS_SCALE,
@@ -10,7 +10,8 @@ import {
   GRAVITE_OPTIONS,
 } from '../data/catalogs'
 import { TOUS_LES_ITEMS } from '../data/scores'
-import { calculerAge, formatLongDate, formatShortDate, formatTime, veilleDe } from '../lib/date'
+import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO, veilleDe } from '../lib/date'
+import { estActiveLe, joursDeLEpisode } from '../lib/journal'
 import { Button, Card, Sheet, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
 import { labPhotoUrl } from '../lib/storage'
@@ -54,8 +55,23 @@ export default function SharedDossierScreen({ token }: Props) {
 
   if (!dossier) return <Spinner label="Ouverture du dossier…" />
 
-  const { dog, share, medications, entries, crises, events, lab_reports, weights, scores, food_entries } =
-    dossier
+  const {
+    dog,
+    share,
+    medications,
+    entries,
+    crises,
+    // Repli défensif : si get_shared_dossier n'a pas encore été redéployé
+    // avec ce champ, la clé est absente du JSON plutôt que null — sans ce
+    // repli, tout le dossier planterait pour un motif purement lié au
+    // déploiement, pas aux données.
+    absences = [],
+    events,
+    lab_reports,
+    weights,
+    scores,
+    food_entries,
+  } = dossier
   const actifs = medications.filter((m) => m.actif)
   const jourDe = (at: string) => {
     const d = new Date(at)
@@ -65,6 +81,9 @@ export default function SharedDossierScreen({ token }: Props) {
     ...new Set([
       ...entries.map((e) => e.date),
       ...crises.map((c) => c.date_debut),
+      // Chaque jour d'une absence doit produire une ligne, même sans autre
+      // saisie, plutôt que de disparaître silencieusement du dossier.
+      ...absences.flatMap((a) => joursDeLEpisode(a, a.date_debut, a.date_fin ?? todayISO())),
       ...events.map((e) => jourDe(e.at)),
     ]),
   ].sort((a, b) => b.localeCompare(a))
@@ -272,6 +291,8 @@ export default function SharedDossierScreen({ token }: Props) {
                 date={date}
                 entry={entries.find((e) => e.date === date) ?? null}
                 crises={crises.filter((c) => c.date_debut === date)}
+                absencesDebut={absences.filter((a) => a.date_debut === date)}
+                absenceActive={absences.some((a) => estActiveLe(a, date, todayISO()))}
                 events={events.filter((e) => jourDe(e.at) === date)}
               />
             ))}
@@ -299,11 +320,15 @@ function Journee({
   date,
   entry,
   crises,
+  absencesDebut,
+  absenceActive,
   events,
 }: {
   date: string
   entry: DailyEntry | null
   crises: Crise[]
+  absencesDebut: Absence[]
+  absenceActive: boolean
   events: SuiviEvent[]
 }) {
   const heure = (at: string) =>
@@ -312,7 +337,22 @@ function Journee({
     <div className="py-3 break-inside-avoid">
       <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
         {formatLongDate(date)}
+        {absenceActive && (
+          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 normal-case">
+            🧳 Absence
+          </span>
+        )}
       </p>
+
+      {absencesDebut.map((absence) => (
+        <div key={absence.id} className="mt-1 rounded-lg bg-slate-100 px-2 py-1.5">
+          <p className="text-sm font-bold text-slate-700">Absence signalée</p>
+          <p className="text-xs font-medium text-slate-500">
+            {absence.date_fin ? `Jusqu’au ${formatShortDate(absence.date_fin)}` : 'En cours'}
+          </p>
+          {absence.note && <p className="text-sm text-slate-700">{absence.note}</p>}
+        </div>
+      ))}
 
       {crises.map((crise) => (
         <div key={crise.id} className="mt-1 rounded-lg bg-red-50 px-2 py-1.5">

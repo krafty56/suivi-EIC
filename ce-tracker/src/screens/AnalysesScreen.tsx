@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -12,7 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, DogMedication, FoodEntry, SuiviEvent } from '../lib/types'
+import type { Absence, Crise, DailyEntry, DogMedication, FoodEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
 import { usePremium } from '../lib/premium'
 import { comparerTraitements, type ComparaisonTraitement } from '../lib/reponseTraitement'
@@ -99,6 +100,7 @@ export default function AnalysesScreen({ dogId }: Props) {
   const [entries, setEntries] = useState<DailyEntry[] | null>(null)
   const [events, setEvents] = useState<SuiviEvent[]>([])
   const [crises, setCrises] = useState<Crise[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [traitements, setTraitements] = useState<ComparaisonTraitement[] | null>(null)
@@ -127,7 +129,7 @@ export default function AnalysesScreen({ dogId }: Props) {
       // Bornée à la période choisie : sur la totalité de l'historique du
       // chien, une requête sans borne dépassait la limite de lignes de
       // Supabase et coupait silencieusement les événements les plus récents.
-      const [e, c, ev, f] = await Promise.all([
+      const [e, c, ab, ev, f] = await Promise.all([
         supabase
           .from('daily_entries')
           .select('*')
@@ -140,6 +142,14 @@ export default function AnalysesScreen({ dogId }: Props) {
         // résolue après le début de la fenêtre) doit rester visible.
         supabase
           .from('crises')
+          .select('*')
+          .eq('dog_id', dogId)
+          .lte('date_debut', fin)
+          .or(`date_fin.is.null,date_fin.gte.${debut}`)
+          .order('date_debut'),
+        // Même logique de chevauchement que les crises.
+        supabase
+          .from('absences')
           .select('*')
           .eq('dog_id', dogId)
           .lte('date_debut', fin)
@@ -167,6 +177,9 @@ export default function AnalysesScreen({ dogId }: Props) {
       }
       setEntries(e.data as DailyEntry[])
       setCrises(c.data as Crise[])
+      // Erreur ignorée plutôt que bloquante : le reste des graphiques ne
+      // doit pas dépendre du déploiement de la table absences.
+      setAbsences(ab.error ? [] : (ab.data as Absence[]))
       setEvents(ev.data as SuiviEvent[])
       setFoodEntries(f.data as FoodEntry[])
     }
@@ -320,6 +333,23 @@ export default function AnalysesScreen({ dogId }: Props) {
     })
   }, [entries, events, fenetre])
 
+  // Bande grisée délimitée par des libellés de jour (x1/x2), comme les
+  // ReferenceLine de changement alimentaire : même repère temporel que le
+  // reste des graphiques, clippée à la fenêtre affichée.
+  const absencePlages = useMemo(() => {
+    const labelDe = new Map(fenetre.map((j) => [j.date, j.label]))
+    return absences
+      .map((a) => {
+        const clippedDebut = a.date_debut > debut ? a.date_debut : debut
+        const clippedFin = a.date_fin && a.date_fin < fin ? a.date_fin : fin
+        const x1 = labelDe.get(clippedDebut)
+        const x2 = labelDe.get(clippedFin)
+        if (clippedDebut > clippedFin || !x1 || !x2) return null
+        return { id: a.id, x1, x2 }
+      })
+      .filter((p): p is { id: string; x1: string; x2: string } => p !== null)
+  }, [absences, fenetre, debut, fin])
+
   const reperesAlimentation = useMemo(
     () =>
       foodEntries.map((f) => ({
@@ -411,6 +441,9 @@ export default function AnalysesScreen({ dogId }: Props) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={refluxPoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
+                  {absencePlages.map((p) => (
+                    <ReferenceArea key={p.id} x1={p.x1} x2={p.x2} fill="#64748b" fillOpacity={0.15} />
+                  ))}
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 11 }}
@@ -442,6 +475,11 @@ export default function AnalysesScreen({ dogId }: Props) {
                 🍽️ pointillé = changement alimentaire ({reperesAlimentation.map((r) => r.nom).join(', ')})
               </p>
             )}
+            {absencePlages.length > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                🧳 zone grisée = absence du propriétaire, aucun symptôme n'a pu être noté
+              </p>
+            )}
           </Card>
 
           <Card>
@@ -455,6 +493,9 @@ export default function AnalysesScreen({ dogId }: Props) {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={crisesPoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
+                  {absencePlages.map((p) => (
+                    <ReferenceArea key={p.id} x1={p.x1} x2={p.x2} fill="#64748b" fillOpacity={0.15} />
+                  ))}
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 11 }}
@@ -492,6 +533,9 @@ export default function AnalysesScreen({ dogId }: Props) {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={scorePoints} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgb(13 24 33 / 0.1)" />
+                    {absencePlages.map((p) => (
+                      <ReferenceArea key={p.id} x1={p.x1} x2={p.x2} fill="#64748b" fillOpacity={0.15} />
+                    ))}
                     <XAxis
                       dataKey="label"
                       tick={{ fontSize: 11 }}

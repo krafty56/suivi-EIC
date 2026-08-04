@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type {
+  Absence,
   Appetit,
   Appointment,
   Crise,
@@ -19,6 +20,7 @@ import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import { Verrou } from '../components/Verrou'
+import AbsenceSheet from './AbsenceSheet'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dog: Dog }
@@ -57,8 +59,10 @@ export default function AccueilScreen({ dog }: Props) {
   const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
   const [derniereCrise, setDerniereCrise] = useState<Crise | null | undefined>(undefined)
+  const [derniereAbsence, setDerniereAbsence] = useState<Absence | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [crisisSheetMode, setCrisisSheetMode] = useState<'nouvelle' | 'modifier' | null>(null)
+  const [absenceSheetMode, setAbsenceSheetMode] = useState<'nouvelle' | 'modifier' | null>(null)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
@@ -72,8 +76,16 @@ export default function AccueilScreen({ dog }: Props) {
     const debut7j = reculerDe(date, 6)
 
     async function charger() {
-      const [eventsResult, entryResult, medsResult, rdvResult, criseResult, events7jResult, entries7jResult] =
-        await Promise.all([
+      const [
+        eventsResult,
+        entryResult,
+        medsResult,
+        rdvResult,
+        criseResult,
+        absenceResult,
+        events7jResult,
+        entries7jResult,
+      ] = await Promise.all([
           supabase
             .from('events')
             .select('*')
@@ -99,6 +111,13 @@ export default function AccueilScreen({ dog }: Props) {
             .maybeSingle(),
           supabase
             .from('crises')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .order('date_debut', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('absences')
             .select('*')
             .eq('dog_id', dog.id)
             .order('date_debut', { ascending: false })
@@ -132,6 +151,9 @@ export default function AccueilScreen({ dog }: Props) {
       setMedications(medsResult.data as DogMedication[])
       setProchainRdv(rdvResult.data as Appointment | null)
       setDerniereCrise(criseResult.data as Crise | null)
+      // Erreur ignorée plutôt que bloquante : le reste de l'écran ne doit pas
+      // dépendre du déploiement de la table absences.
+      setDerniereAbsence(absenceResult.error ? null : (absenceResult.data as Absence | null))
       setEvents7j(events7jResult.data as SuiviEvent[])
       setEntries7j(entries7jResult.data as DailyEntry[])
 
@@ -173,6 +195,7 @@ export default function AccueilScreen({ dog }: Props) {
 
   const enCrise = derniereCrise ? derniereCrise.date_fin === null : false
   const joursSansCrise = derniereCrise?.date_fin ? joursDepuis(derniereCrise.date_fin) : null
+  const absenceEnCours = derniereAbsence?.date_fin === null ? derniereAbsence : null
   const alertes =
     derniereCrise !== undefined ? detecterAlertes(events7j, entries7j, derniereCrise) : []
 
@@ -228,6 +251,32 @@ export default function AccueilScreen({ dog }: Props) {
                 Clôturer
               </Button>
             )}
+          </div>
+        </Card>
+      )}
+
+      {absenceEnCours && (
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" aria-hidden="true">
+                🧳
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-700">
+                  Absent depuis le {formatShortDate(absenceEnCours.date_debut)}
+                </p>
+                <p className="text-xs text-slate-500">Aucun symptôme ne peut être noté comme fiable.</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0 py-2 text-xs"
+              onClick={() => setAbsenceSheetMode('modifier')}
+            >
+              Clôturer
+            </Button>
           </div>
         </Card>
       )}
@@ -365,14 +414,24 @@ export default function AccueilScreen({ dog }: Props) {
         </Card>
       </div>
 
-      <Button
-        type="button"
-        variant="danger"
-        className="w-full py-2.5 text-sm"
-        onClick={() => setCrisisSheetMode('nouvelle')}
-      >
-        🚨 Signaler une crise
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant="danger"
+          className="py-2.5 text-sm"
+          onClick={() => setCrisisSheetMode('nouvelle')}
+        >
+          🚨 Signaler une crise
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className="py-2.5 text-sm"
+          onClick={() => setAbsenceSheetMode('nouvelle')}
+        >
+          🧳 Signaler une absence
+        </Button>
+      </div>
 
       {crisisSheetMode && (
         <CrisisSheet
@@ -381,6 +440,18 @@ export default function AccueilScreen({ dog }: Props) {
           onClose={() => setCrisisSheetMode(null)}
           onSaved={() => {
             setCrisisSheetMode(null)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
+      )}
+
+      {absenceSheetMode && (
+        <AbsenceSheet
+          dogId={dog.id}
+          absence={absenceSheetMode === 'modifier' && absenceEnCours ? absenceEnCours : undefined}
+          onClose={() => setAbsenceSheetMode(null)}
+          onSaved={() => {
+            setAbsenceSheetMode(null)
             setRefreshSignal((n) => n + 1)
           }}
         />
