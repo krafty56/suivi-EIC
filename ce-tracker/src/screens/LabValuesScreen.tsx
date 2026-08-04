@@ -5,13 +5,15 @@ import type { LabValue } from '../lib/types'
 import {
   CATEGORIE_LABELS,
   calculerTendance,
+  grouperParImport,
   grouperParParametre,
   libelleFlag,
   resumerParametre,
   type ParameterGroup,
 } from '../lib/labValues'
-import { formatShortDate } from '../lib/date'
-import { Card, ErrorMessage, Spinner } from '../components/ui'
+import { formatLongDate, formatShortDate } from '../lib/date'
+import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
+import LabAnalysisImportSheet from './LabAnalysisImport'
 
 type Props = { dogId: string }
 
@@ -27,19 +29,31 @@ export default function LabValuesScreen({ dogId }: Props) {
   const [recherche, setRecherche] = useState('')
   const [filtre, setFiltre] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [importOuvert, setImportOuvert] = useState(false)
+  const [gererOuvert, setGererOuvert] = useState(false)
 
-  useEffect(() => {
-    supabase
+  async function charger() {
+    const { data, error: dbError } = await supabase
       .from('lab_values')
       .select('*')
       .eq('dog_id', dogId)
       .order('date', { ascending: true })
-      .then(({ data, error: dbError }) => {
-        if (dbError) setError(dbError.message)
-        else setValeurs(data as LabValue[])
-      })
+    if (dbError) setError(dbError.message)
+    else setValeurs(data as LabValue[])
+  }
+
+  useEffect(() => {
+    void charger()
   }, [dogId])
 
+  async function supprimerImport(batch: string) {
+    if (!confirm('Supprimer cette analyse et tous ses paramètres ?')) return
+    const { error: dbError } = await supabase.from('lab_values').delete().eq('import_batch', batch)
+    if (dbError) setError(dbError.message)
+    else void charger()
+  }
+
+  const imports = useMemo(() => (valeurs ? grouperParImport(valeurs) : []), [valeurs])
   const groupes = useMemo(() => (valeurs ? grouperParParametre(valeurs) : []), [valeurs])
 
   const categories = useMemo(
@@ -76,10 +90,13 @@ export default function LabValuesScreen({ dogId }: Props) {
       {groupes.length === 0 ? (
         <Card>
           <p className="text-sm text-slate-500">
-            Aucune valeur de laboratoire enregistrée. Les comptes rendus photographiés dans
-            l’onglet Comptes rendus ne remplissent pas cette vue : c’est ici que vivront les
-            valeurs chiffrées, paramètre par paramètre.
+            Aucune analyse importée. Photographiez le tableau de résultats d’une prise de sang ou
+            d’une analyse d’urine : l’app en extrait les paramètres, avec l’intervalle et le
+            graphique de suivi.
           </p>
+          <Button type="button" className="mt-3 w-full" onClick={() => setImportOuvert(true)}>
+            Ajouter une analyse
+          </Button>
         </Card>
       ) : (
         <>
@@ -107,6 +124,15 @@ export default function LabValuesScreen({ dogId }: Props) {
                 Dernier examen enregistré :{' '}
                 {formatShortDate(groupes.reduce((max, g) => (g.derniere.date > max ? g.derniere.date : max), groupes[0].derniere.date))}
               </p>
+            )}
+            {imports.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setGererOuvert(true)}
+                className="mt-2 block w-full text-center text-xs font-medium text-brand-700 underline"
+              >
+                Gérer les analyses importées ({imports.length})
+              </button>
             )}
           </Card>
 
@@ -139,9 +165,69 @@ export default function LabValuesScreen({ dogId }: Props) {
           ) : (
             filtres.map((groupe) => <ParametreCard key={groupe.key} groupe={groupe} />)
           )}
+
+          <Button type="button" className="w-full" onClick={() => setImportOuvert(true)}>
+            Ajouter une analyse
+          </Button>
         </>
       )}
+
+      {importOuvert && (
+        <LabAnalysisImportSheet
+          dogId={dogId}
+          onClose={() => setImportOuvert(false)}
+          onSaved={() => {
+            setImportOuvert(false)
+            void charger()
+          }}
+        />
+      )}
+
+      {gererOuvert && (
+        <GererImportsSheet imports={imports} onSupprimer={supprimerImport} onClose={() => setGererOuvert(false)} />
+      )}
     </div>
+  )
+}
+
+function GererImportsSheet({
+  imports,
+  onSupprimer,
+  onClose,
+}: {
+  imports: ReturnType<typeof grouperParImport>
+  onSupprimer: (batch: string) => void
+  onClose: () => void
+}) {
+  return (
+    <Sheet title="Analyses importées" onClose={onClose}>
+      <div className="space-y-2">
+        {imports.map((lot) => (
+          <div
+            key={lot.batch}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+          >
+            <div>
+              <p className="text-sm font-semibold text-slate-800 first-letter:uppercase">
+                {formatLongDate(lot.date)}
+              </p>
+              <p className="text-xs text-slate-500">
+                {lot.lab_name ? `${lot.lab_name} · ` : ''}
+                {lot.nombre} paramètre{lot.nombre > 1 ? 's' : ''}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="danger"
+              className="shrink-0 px-3 py-2 text-sm"
+              onClick={() => onSupprimer(lot.batch)}
+            >
+              Supprimer
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Sheet>
   )
 }
 

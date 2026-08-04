@@ -38,6 +38,49 @@ export function grouperParParametre(valeurs: LabValue[]): ParameterGroup[] {
   })
 }
 
+export type ImportBatch = {
+  batch: string
+  date: string
+  lab_name: string | null
+  nombre: number
+}
+
+/** Regroupe les valeurs par import, du plus récent au plus ancien : c'est
+ * l'unité qu'on supprime d'un coup — une analyse, pas une ligne à la fois.
+ * Les valeurs sans import_batch (saisies avant l'introduction de l'import
+ * photo, s'il y en a) n'apparaissent pas ici : rien à supprimer en bloc. */
+export function grouperParImport(valeurs: LabValue[]): ImportBatch[] {
+  const parLot = new Map<string, LabValue[]>()
+  for (const v of valeurs) {
+    if (!v.import_batch) continue
+    const liste = parLot.get(v.import_batch) ?? []
+    liste.push(v)
+    parLot.set(v.import_batch, liste)
+  }
+  return [...parLot.entries()]
+    .map(([batch, lignes]) => ({
+      batch,
+      date: lignes[0].date,
+      lab_name: lignes[0].lab_name,
+      nombre: lignes.length,
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** Position de la valeur par rapport à l'intervalle de référence. Ne dépend
+ * jamais du jugement de l'IA d'extraction : recalculée ici, y compris après
+ * une correction manuelle en relecture, pour rester fiable. */
+export function calculerFlag(
+  value: number | null,
+  refLow: number | null,
+  refHigh: number | null,
+): LabValue['flag'] {
+  if (value === null || refLow === null || refHigh === null) return null
+  if (value < refLow) return 'low'
+  if (value > refHigh) return 'high'
+  return 'normal'
+}
+
 const LABEL_FLAG: Record<string, string> = {
   normal: 'dans l’intervalle',
   low: 'bas',

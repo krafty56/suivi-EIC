@@ -35,6 +35,9 @@ export type LabValue = {
   ref_high: number | null
   flag: 'low' | 'normal' | 'high' | 'abnormal' | null
   note: string | null
+  /** Identifiant commun à toutes les valeurs d'une même analyse importée :
+   * permet de supprimer l'import en un geste plutôt que ligne par ligne. */
+  import_batch: string | null
 }
 
 /** Un des deux raccourcis de l'écran d'accueil. */

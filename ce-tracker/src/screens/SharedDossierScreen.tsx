@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, SharedDossier, SuiviEvent } from '../lib/types'
+import type { Crise, DailyEntry, LabReport, SharedDossier, SuiviEvent } from '../lib/types'
 import {
   APPETIT_OPTIONS,
   BCS_SCALE,
@@ -11,7 +11,7 @@ import {
 } from '../data/catalogs'
 import { TOUS_LES_ITEMS } from '../data/scores'
 import { calculerAge, formatLongDate, formatShortDate, formatTime, veilleDe } from '../lib/date'
-import { Button, Card, Spinner } from '../components/ui'
+import { Button, Card, Sheet, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
 import { labPhotoUrl } from '../lib/storage'
 
@@ -20,6 +20,7 @@ type Props = { token: string }
 export default function SharedDossierScreen({ token }: Props) {
   const [dossier, setDossier] = useState<SharedDossier | null>(null)
   const [invalide, setInvalide] = useState<string | null>(null)
+  const [zoomed, setZoomed] = useState<LabReport | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -233,17 +234,30 @@ export default function SharedDossierScreen({ token }: Props) {
                   )}
                 </figcaption>
                 {report.storage_path && (
-                  <img
-                    src={labPhotoUrl(report.storage_path)}
-                    alt={`Compte rendu du ${report.date}`}
-                    className="mt-1 w-full rounded-xl ring-1 ring-slate-200"
-                  />
+                  <button type="button" onClick={() => setZoomed(report)} className="mt-1 block w-full">
+                    <img
+                      src={labPhotoUrl(report.storage_path)}
+                      alt={`Compte rendu du ${report.date}`}
+                      className="w-full rounded-xl ring-1 ring-slate-200"
+                    />
+                  </button>
                 )}
                 {report.note && <p className="mt-1 text-sm text-slate-700">{report.note}</p>}
               </figure>
             ))}
           </div>
         </Card>
+      )}
+
+      {zoomed?.storage_path && (
+        <Sheet title={formatLongDate(zoomed.date)} onClose={() => setZoomed(null)}>
+          <img
+            src={labPhotoUrl(zoomed.storage_path)}
+            alt={`Compte rendu du ${zoomed.date}`}
+            className="w-full rounded-xl"
+          />
+          {zoomed.note && <p className="mt-3 text-sm text-slate-600">{zoomed.note}</p>}
+        </Sheet>
       )}
 
       <Card>
