@@ -4,6 +4,7 @@ import type { LabValue } from '../lib/types'
 import { CATEGORIE_LABELS, calculerFlag, parseValeur } from '../lib/labValues'
 import { todayISO } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
+import { UniteSelect } from '../components/UniteSelect'
 import { LAB_BUCKET } from '../lib/storage'
 
 type Props = {
@@ -301,12 +302,9 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
                     placeholder="Valeur"
                     className={inputClass}
                   />
-                  <input
-                    type="text"
-                    value={ligne.unit ?? ''}
-                    onChange={(e) => modifierLigne(ligne.cle, { unit: e.target.value || null })}
-                    placeholder="Unité"
-                    className={inputClass}
+                  <UniteSelect
+                    value={ligne.unit}
+                    onChange={(unit) => modifierLigne(ligne.cle, { unit })}
                   />
                   <input
                     type="number"

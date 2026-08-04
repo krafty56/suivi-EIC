@@ -171,6 +171,35 @@ export function resumerParametre(groupe: ParameterGroup): string {
   return debut + fin + avertissement
 }
 
+/** Unités courantes des analyses de sang et d'urine vétérinaires — biochimie,
+ * hématologie, électrolytes, endocrinologie. Une liste, pas une contrainte :
+ * l'écran d'édition garde toujours une option « Autre » en texte libre pour
+ * ce qu'elle ne couvre pas. */
+export const UNITES_LABO: string[] = [
+  'g/L',
+  'mg/L',
+  'µg/L',
+  'ng/L',
+  'pg/L',
+  'g/dL',
+  'mg/dL',
+  'mmol/L',
+  'µmol/L',
+  'nmol/L',
+  'pmol/L',
+  'mEq/L',
+  'mOsm/L',
+  'U/L',
+  'UI/L',
+  'G/L',
+  'T/L',
+  '/µL',
+  'fL',
+  'pg',
+  'mmHg',
+  '%',
+]
+
 export const CATEGORIE_LABELS: Record<string, string> = {
   digestive: 'Digestif / pancréas',
   hematology: 'Hématologie',
