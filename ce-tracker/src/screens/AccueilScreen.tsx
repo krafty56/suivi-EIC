@@ -13,6 +13,7 @@ import type {
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsEvenement } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
+import { detecterAlertes } from '../lib/alertes'
 import { formatLongDate, formatShortDate, formatTime, heureDe, joursDepuis, todayISO } from '../lib/date'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
@@ -35,11 +36,20 @@ function pluriel(label: string): string {
   return /[sxz]$/.test(mot) ? mot : `${mot}s`
 }
 
+/** Une date YYYY-MM-DD, n jours avant une autre. */
+function reculerDe(date: string, jours: number): string {
+  const d = new Date(date)
+  d.setDate(d.getDate() - jours)
+  return d.toISOString().slice(0, 10)
+}
+
 /** Le récapitulatif du jour, en lecture seule : ce qui a déjà été saisi.
  * La correction ou l'ajout d'une entrée se fait dans l'onglet Saisir. */
 export default function AccueilScreen({ dog }: Props) {
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [entry, setEntry] = useState<DailyEntry | null>(null)
+  const [events7j, setEvents7j] = useState<SuiviEvent[]>([])
+  const [entries7j, setEntries7j] = useState<DailyEntry[]>([])
   const [medications, setMedications] = useState<DogMedication[]>([])
   const [takenMeds, setTakenMeds] = useState<Set<string>>(new Set())
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
@@ -54,43 +64,61 @@ export default function AccueilScreen({ dog }: Props) {
     const debut = new Date(`${date}T00:00:00`)
     const fin = new Date(debut)
     fin.setDate(fin.getDate() + 1)
+    // Fenêtre plus large pour les alertes cliniques : une répétition ou une
+    // tendance ne se voit pas sur la seule journée en cours.
+    const debut7j = reculerDe(date, 6)
 
     async function charger() {
-      const [eventsResult, entryResult, medsResult, rdvResult, criseResult] = await Promise.all([
-        supabase
-          .from('events')
-          .select('*')
-          .eq('dog_id', dog.id)
-          .gte('at', debut.toISOString())
-          .lt('at', fin.toISOString())
-          .order('at', { ascending: false }),
-        supabase.from('daily_entries').select('*').eq('dog_id', dog.id).eq('date', date).maybeSingle(),
-        supabase
-          .from('dog_medications')
-          .select('*')
-          .eq('dog_id', dog.id)
-          .eq('actif', true)
-          .order('heure_prise', { ascending: true, nullsFirst: false }),
-        supabase
-          .from('appointments')
-          .select('*')
-          .eq('dog_id', dog.id)
-          .gte('date', date)
-          .order('date', { ascending: true })
-          .order('heure', { ascending: true, nullsFirst: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from('crises')
-          .select('*')
-          .eq('dog_id', dog.id)
-          .order('date_debut', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ])
+      const [eventsResult, entryResult, medsResult, rdvResult, criseResult, events7jResult, entries7jResult] =
+        await Promise.all([
+          supabase
+            .from('events')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .gte('at', debut.toISOString())
+            .lt('at', fin.toISOString())
+            .order('at', { ascending: false }),
+          supabase.from('daily_entries').select('*').eq('dog_id', dog.id).eq('date', date).maybeSingle(),
+          supabase
+            .from('dog_medications')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .eq('actif', true)
+            .order('heure_prise', { ascending: true, nullsFirst: false }),
+          supabase
+            .from('appointments')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .gte('date', date)
+            .order('date', { ascending: true })
+            .order('heure', { ascending: true, nullsFirst: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('crises')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .order('date_debut', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('events')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .gte('at', `${debut7j}T00:00:00`)
+            .lt('at', fin.toISOString())
+            .order('at'),
+          supabase.from('daily_entries').select('*').eq('dog_id', dog.id).gte('date', debut7j).lte('date', date),
+        ])
 
       const dbError =
-        eventsResult.error ?? entryResult.error ?? medsResult.error ?? rdvResult.error ?? criseResult.error
+        eventsResult.error ??
+        entryResult.error ??
+        medsResult.error ??
+        rdvResult.error ??
+        criseResult.error ??
+        events7jResult.error ??
+        entries7jResult.error
       if (dbError) {
         setError(dbError.message)
         return
@@ -101,6 +129,8 @@ export default function AccueilScreen({ dog }: Props) {
       setMedications(medsResult.data as DogMedication[])
       setProchainRdv(rdvResult.data as Appointment | null)
       setDerniereCrise(criseResult.data as Crise | null)
+      setEvents7j(events7jResult.data as SuiviEvent[])
+      setEntries7j(entries7jResult.data as DailyEntry[])
 
       // La checklist du jour (Saisir) et les événements traitement horodatés
       // sont deux façons d'enregistrer une prise : les deux comptent ici.
@@ -140,6 +170,8 @@ export default function AccueilScreen({ dog }: Props) {
 
   const enCrise = derniereCrise ? derniereCrise.date_fin === null : false
   const joursSansCrise = derniereCrise?.date_fin ? joursDepuis(derniereCrise.date_fin) : null
+  const alertes =
+    derniereCrise !== undefined ? detecterAlertes(events7j, entries7j, derniereCrise) : []
 
   return (
     <div className="space-y-4 p-4 pb-8">
@@ -147,6 +179,13 @@ export default function AccueilScreen({ dog }: Props) {
         <p className="text-sm text-slate-500 capitalize">{formatLongDate(todayISO())}</p>
         <h2 className="text-xl font-bold text-slate-900">Bonjour, voici la journée de {dog.name}</h2>
       </div>
+
+      {alertes.map((a) => (
+        <Card key={a.id} className="bg-red-50 ring-2 ring-red-200">
+          <p className="text-sm font-bold text-red-800">⚠️ {a.titre}</p>
+          <p className="mt-1 text-sm text-red-700">{a.description}</p>
+        </Card>
+      ))}
 
       {derniereCrise !== undefined && (
         <Card className={enCrise ? 'ring-2 ring-red-200' : ''}>
