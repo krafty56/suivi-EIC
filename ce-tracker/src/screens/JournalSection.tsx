@@ -172,6 +172,15 @@ export default function JournalSection({
         )}
       </div>
 
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full py-2.5 text-sm"
+        onClick={() => setAjout({ mode: 'nouveau', depart: null })}
+      >
+        Ajouter une entrée
+      </Button>
+
       <div>
         <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
           Entrées du jour
@@ -239,15 +248,6 @@ export default function JournalSection({
             </ul>
           )}
         </Card>
-
-        <Button
-          type="button"
-          variant="secondary"
-          className="mt-3 w-full py-2.5 text-sm"
-          onClick={() => setAjout({ mode: 'nouveau', depart: null })}
-        >
-          Ajouter une entrée
-        </Button>
       </div>
 
       {ajout && (

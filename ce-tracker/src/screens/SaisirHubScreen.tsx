@@ -238,14 +238,6 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
           <p className="mt-2 text-sm text-slate-600">Suivi de {dog.name}.</p>
         </Card>
 
-        <JournalSection
-          dog={dog}
-          date={date}
-          onDogChange={onDogChange}
-          refreshSignal={refreshSignal}
-          onEditAutre={ouvrirEditionAutre}
-        />
-
         <div>
           <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             Autres saisies
@@ -268,14 +260,24 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         {loading ? (
           <Spinner />
         ) : (
-          <>
-            <Card>
-              <p className="mb-2 text-sm font-medium text-slate-700">Appétit</p>
-              <SegmentedControl options={APPETIT_OPTIONS} value={appetit} onChange={setAppetit} />
-              <p className="mt-4 mb-2 text-sm font-medium text-slate-700">Énergie</p>
-              <SegmentedControl options={ENERGIE_OPTIONS} value={energie} onChange={setEnergie} />
-            </Card>
+          <Card>
+            <p className="mb-2 text-sm font-medium text-slate-700">Appétit</p>
+            <SegmentedControl options={APPETIT_OPTIONS} value={appetit} onChange={setAppetit} />
+            <p className="mt-4 mb-2 text-sm font-medium text-slate-700">Énergie</p>
+            <SegmentedControl options={ENERGIE_OPTIONS} value={energie} onChange={setEnergie} />
+          </Card>
+        )}
 
+        <JournalSection
+          dog={dog}
+          date={date}
+          onDogChange={onDogChange}
+          refreshSignal={refreshSignal}
+          onEditAutre={ouvrirEditionAutre}
+        />
+
+        {!loading && (
+          <>
             <Card>
               <p className="mb-3 text-sm font-medium text-slate-700">Médicaments du jour</p>
               {medications.length === 0 ? (
