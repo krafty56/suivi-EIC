@@ -139,20 +139,27 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
     setLignes((ls) => ls.filter((l) => l.cle !== cle))
   }
 
+  function ligneVide(): LigneProposee {
+    return {
+      cle: crypto.randomUUID(),
+      parameter_key: '',
+      parameter_label: '',
+      category: null,
+      valeur: '',
+      unit: null,
+      ref_low: null,
+      ref_high: null,
+    }
+  }
+
   function ajouterLigne() {
-    setLignes((ls) => [
-      ...ls,
-      {
-        cle: crypto.randomUUID(),
-        parameter_key: '',
-        parameter_label: '',
-        category: null,
-        valeur: '',
-        unit: null,
-        ref_low: null,
-        ref_high: null,
-      },
-    ])
+    setLignes((ls) => [...ls, ligneVide()])
+  }
+
+  function saisirManuellement() {
+    setError(null)
+    setLignes([ligneVide()])
+    setEtape('relecture')
   }
 
   async function enregistrer() {
@@ -220,6 +227,14 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
           <Button type="submit" className="w-full">
             Analyser la photo
           </Button>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span className="h-px flex-1 bg-slate-200" />
+            ou
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+          <Button type="button" variant="secondary" className="w-full" onClick={saisirManuellement}>
+            Saisir les paramètres à la main
+          </Button>
         </form>
       )}
 
@@ -230,8 +245,9 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
       {etape === 'relecture' && (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Vérifiez et corrigez les paramètres avant d’enregistrer : la photo n’est pas
-            conservée, seules ces valeurs le seront.
+            {storagePath
+              ? 'Vérifiez et corrigez les paramètres avant d’enregistrer : la photo n’est pas conservée, seules ces valeurs le seront.'
+              : 'Ajoutez les paramètres à enregistrer.'}
           </p>
 
           <div className="grid grid-cols-2 gap-3">
