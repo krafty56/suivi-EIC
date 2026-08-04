@@ -25,6 +25,18 @@ export function formatShortDate(iso: string): string {
   })
 }
 
+/** « 3 févr. 25 » à partir d'une date YYYY-MM-DD : pour les mesures de
+ * laboratoire, qui se comparent souvent d'une année sur l'autre — contrairement
+ * aux graphiques d'Analyses, toujours bornés à une période explicite. */
+export function formatShortDateAvecAnnee(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: '2-digit',
+  })
+}
+
 /** « 08:00 » à partir d'une heure Postgres « 08:00:00 ». */
 export function formatTime(time: string | null): string | null {
   if (!time) return null

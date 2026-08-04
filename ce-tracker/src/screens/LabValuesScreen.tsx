@@ -11,7 +11,7 @@ import {
   resumerParametre,
   type ParameterGroup,
 } from '../lib/labValues'
-import { formatLongDate, formatShortDate } from '../lib/date'
+import { formatLongDate, formatShortDateAvecAnnee } from '../lib/date'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import LabAnalysisImportSheet from './LabAnalysisImport'
 
@@ -129,7 +129,7 @@ export default function LabValuesScreen({ dogId }: Props) {
             {groupes.length > 0 && (
               <p className="mt-2 text-center text-xs text-slate-500">
                 Dernier examen enregistré :{' '}
-                {formatShortDate(groupes.reduce((max, g) => (g.derniere.date > max ? g.derniere.date : max), groupes[0].derniere.date))}
+                {formatShortDateAvecAnnee(groupes.reduce((max, g) => (g.derniere.date > max ? g.derniere.date : max), groupes[0].derniere.date))}
               </p>
             )}
             {imports.length > 0 && (
@@ -276,7 +276,7 @@ function ParametreCard({
 
   const points = mesures.map((m) => ({
     date: m.date,
-    label: formatShortDate(m.date),
+    label: formatShortDateAvecAnnee(m.date),
     value: m.value,
     flag: m.flag,
   }))
@@ -289,7 +289,7 @@ function ParametreCard({
           <p className="font-bold text-slate-900">{derniere.parameter_label}</p>
           <p className="text-xs text-slate-500">
             {mesures.length} mesure{mesures.length > 1 ? 's' : ''} · dernière le{' '}
-            {formatShortDate(derniere.date)}
+            {formatShortDateAvecAnnee(derniere.date)}
           </p>
         </div>
         {flagLabel && (
@@ -368,7 +368,7 @@ function ParametreCard({
               {[...mesures].reverse().map((m) => (
                 <tr key={m.id}>
                   <td className="py-1.5 pr-2 tabular-nums text-slate-700">
-                    {formatShortDate(m.date)}
+                    {formatShortDateAvecAnnee(m.date)}
                   </td>
                   <td className="py-1.5 pr-2 text-right font-semibold tabular-nums text-slate-900">
                     {m.value !== null ? m.value : (m.value_text ?? '—')}
