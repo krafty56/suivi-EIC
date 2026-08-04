@@ -11,7 +11,13 @@ import type {
   Energie,
   SuiviEvent,
 } from '../lib/types'
-import { APPETIT_OPTIONS, ENERGIE_OPTIONS, resumeDetailsEvenement } from '../data/catalogs'
+import {
+  APPETIT_OPTIONS,
+  ENERGIE_OPTIONS,
+  QUANTITE_REPAS_OPTIONS,
+  QUANTITE_TONE_CLASSES,
+  resumeDetailsEvenement,
+} from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
 import { detecterAlertes } from '../lib/alertes'
@@ -390,10 +396,22 @@ export default function AccueilScreen({ dog }: Props) {
                     {heureDe(event.at)}
                   </span>
                   <span className="flex w-9 shrink-0 justify-center">
-                    {event.intensite !== null && (
+                    {event.intensite !== null ? (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
                         {event.intensite}
                       </span>
+                    ) : (
+                      event.type === 'repas' &&
+                      (() => {
+                        const q = QUANTITE_REPAS_OPTIONS.find((o) => o.value === event.details.quantite)
+                        return q ? (
+                          <span
+                            className={`h-3 w-3 rounded-full ${QUANTITE_TONE_CLASSES[q.tone].dot}`}
+                            title={q.label}
+                            aria-label={q.label}
+                          />
+                        ) : null
+                      })()
                     )}
                   </span>
                   <span className="w-8 shrink-0">

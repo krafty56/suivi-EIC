@@ -1,4 +1,4 @@
-import type { Appetit, Changement, Energie, EventType, Gravite } from '../lib/types'
+import type { Appetit, Changement, Energie, EventType, Gravite, QuantiteRepas } from '../lib/types'
 
 /** Catalogue de médicaments, fixe pour cette phase. */
 export const MEDICATION_CATALOG: { categorie: string; medicaments: string[] }[] = [
@@ -141,15 +141,40 @@ export const APPETIT_OPTIONS: { value: Appetit; label: string }[] = [
   { value: 'bon', label: 'Bon' },
 ]
 
+/** Ce qui a été effectivement mangé, distinct de l'appétit : un badge coloré
+ * (rouge/orange/vert) le rend visible d'un coup d'œil dans les listes. */
+export const QUANTITE_REPAS_OPTIONS: { value: QuantiteRepas; label: string; tone: 'rouge' | 'orange' | 'vert' }[] = [
+  { value: 'refus', label: 'Refus', tone: 'rouge' },
+  { value: 'partiel', label: 'Partiellement mangé', tone: 'orange' },
+  { value: 'entier', label: 'Entièrement mangé', tone: 'vert' },
+]
+
+/** Classes de couleur partagées par le sélecteur et le badge de quantité
+ * mangée — un vert franc plutôt que le brand olive, pour rester lisible
+ * comme un vrai feu rouge/orange/vert plutôt que se confondre avec le bleu
+ * marine déjà utilisé partout pour « sélectionné ». */
+export const QUANTITE_TONE_CLASSES: Record<'rouge' | 'orange' | 'vert', { badge: string; actif: string; dot: string }> = {
+  rouge: { badge: 'bg-red-100 text-red-700', actif: 'bg-red-600 text-white', dot: 'bg-red-600' },
+  orange: { badge: 'bg-amber-100 text-amber-800', actif: 'bg-amber-500 text-white', dot: 'bg-amber-500' },
+  vert: { badge: 'bg-emerald-100 text-emerald-800', actif: 'bg-emerald-600 text-white', dot: 'bg-emerald-600' },
+}
+
 /** Résumé compact de l'appétit noté sur un repas. Les repas importés portent
  * l'ancien barème numérique de l'app d'origine (1 à 3) ; les nouveaux
  * utilisent directement la valeur d'Appetit — les deux sont acceptés. */
 export function resumeDetailsRepas(details: Record<string, unknown>): string | null {
+  const parts: string[] = []
+  const quantite = QUANTITE_REPAS_OPTIONS.find((o) => o.value === details.quantite)
+  if (quantite) parts.push(quantite.label)
+
   const brut = details.appetite
-  if (typeof brut === 'number') {
-    return ({ 1: 'Faible', 2: 'Normal', 3: 'Bon' } as Record<number, string>)[brut] ?? null
-  }
-  return APPETIT_OPTIONS.find((o) => o.value === brut)?.label ?? null
+  const appetit =
+    typeof brut === 'number'
+      ? (({ 1: 'Faible', 2: 'Normal', 3: 'Bon' } as Record<number, string>)[brut] ?? null)
+      : (APPETIT_OPTIONS.find((o) => o.value === brut)?.label ?? null)
+  if (appetit) parts.push(`appétit ${appetit.toLowerCase()}`)
+
+  return parts.length > 0 ? parts.join(' · ') : null
 }
 
 /** Résumé compact selon le type d'événement, pour les listes d'entrées. */

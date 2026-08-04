@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Appetit, Dog, Raccourci, SuiviEvent } from '../lib/types'
+import type { Appetit, Dog, QuantiteRepas, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, COTATIONS_SPECIFIQUES, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import {
   APPETIT_OPTIONS,
   COULEURS_SELLE,
   DETAILS_SELLE,
   FECAL_SCORES,
+  QUANTITE_REPAS_OPTIONS,
+  QUANTITE_TONE_CLASSES,
   TAILLES_SELLE,
   resumeDetailsEvenement,
 } from '../data/catalogs'
@@ -217,10 +219,22 @@ export default function JournalSection({
                       {heureDe(event.at)}
                     </span>
                     <span className="flex w-9 shrink-0 justify-center">
-                      {event.intensite !== null && (
+                      {event.intensite !== null ? (
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums text-slate-900">
                           {event.intensite}
                         </span>
+                      ) : (
+                        event.type === 'repas' &&
+                        (() => {
+                          const q = QUANTITE_REPAS_OPTIONS.find((o) => o.value === event.details.quantite)
+                          return q ? (
+                            <span
+                              className={`h-3 w-3 rounded-full ${QUANTITE_TONE_CLASSES[q.tone].dot}`}
+                              title={q.label}
+                              aria-label={q.label}
+                            />
+                          ) : null
+                        })()
                       )}
                     </span>
                   </button>
@@ -336,13 +350,17 @@ function AjoutSheet({
     Object.fromEntries(DETAILS_SELLE.map((d) => [d.key, Boolean(detailsInitiaux[d.key])])),
   )
 
-  // L'appétit n'a de sens que pour un repas. Les repas importés portent
-  // l'ancien barème numérique (1 à 3) de l'app d'origine.
+  // L'appétit et la quantité mangée n'ont de sens que pour un repas. Les
+  // repas importés portent l'ancien barème numérique (1 à 3) de l'app
+  // d'origine, pour l'appétit uniquement.
   const appetiteInitial = detailsInitiaux.appetite
   const [appetitRepas, setAppetitRepas] = useState<Appetit | null>(
     typeof appetiteInitial === 'number'
       ? (({ 1: 'faible', 2: 'normal', 3: 'bon' } as Record<number, Appetit>)[appetiteInitial] ?? null)
       : ((appetiteInitial as Appetit) ?? null),
+  )
+  const [quantiteRepas, setQuantiteRepas] = useState<QuantiteRepas | null>(
+    (detailsInitiaux.quantite as QuantiteRepas) ?? null,
   )
 
   // La photo n'a de sens que pour une selle, pas pour un symptôme constaté
@@ -395,7 +413,10 @@ function AjoutSheet({
             ...Object.fromEntries(Object.entries(signes).filter(([, v]) => v)),
           }
         : choisi.type === 'repas'
-          ? { ...(appetitRepas ? { appetite: appetitRepas } : {}) }
+          ? {
+              ...(appetitRepas ? { appetite: appetitRepas } : {}),
+              ...(quantiteRepas ? { quantite: quantiteRepas } : {}),
+            }
           : (evenement?.details ?? {})
 
     onSave({
@@ -509,14 +530,40 @@ function AjoutSheet({
         )}
 
         {choisi.type === 'repas' && (
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Appétit (optionnel)</p>
-            <SegmentedControl
-              options={APPETIT_OPTIONS}
-              value={appetitRepas}
-              onChange={setAppetitRepas}
-            />
-          </div>
+          <>
+            <div>
+              <p className="mb-2 text-sm font-medium text-slate-700">Quantité mangée (optionnel)</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {QUANTITE_REPAS_OPTIONS.map((q) => {
+                  const actif = quantiteRepas === q.value
+                  return (
+                    <button
+                      key={q.value}
+                      type="button"
+                      aria-pressed={actif}
+                      onClick={() => setQuantiteRepas(actif ? null : q.value)}
+                      className={`rounded-xl py-2.5 text-xs font-semibold transition-colors ${
+                        actif
+                          ? QUANTITE_TONE_CLASSES[q.tone].actif
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {q.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-slate-700">Appétit (optionnel)</p>
+              <SegmentedControl
+                options={APPETIT_OPTIONS}
+                value={appetitRepas}
+                onChange={setAppetitRepas}
+              />
+            </div>
+          </>
         )}
 
         {choisi.type === 'selle' && (

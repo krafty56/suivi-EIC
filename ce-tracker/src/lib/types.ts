@@ -74,6 +74,9 @@ export type DogMedication = {
 export type Appetit = 'faible' | 'normal' | 'bon'
 export type Energie = 'faible' | 'normale' | 'bonne'
 export type Gravite = 'leger' | 'modere' | 'marque'
+/** Ce qui a été effectivement mangé au repas, distinct de l'appétit (l'envie
+ * de manger) : un chien peut avoir un bon appétit et refuser malgré tout. */
+export type QuantiteRepas = 'refus' | 'partiel' | 'entier'
 
 export type Symptom = {
   nom: string
