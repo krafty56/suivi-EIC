@@ -15,8 +15,10 @@ import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
 import { detecterAlertes } from '../lib/alertes'
 import { formatLongDate, formatShortDate, formatTime, heureDe, joursDepuis, todayISO } from '../lib/date'
+import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 import CrisisSheet from './CrisisSheet'
 
 type Props = { dog: Dog }
@@ -46,6 +48,7 @@ function reculerDe(date: string, jours: number): string {
 /** Le récapitulatif du jour, en lecture seule : ce qui a déjà été saisi.
  * La correction ou l'ajout d'une entrée se fait dans l'onglet Saisir. */
 export default function AccueilScreen({ dog }: Props) {
+  const { isPremium } = usePremium()
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [entry, setEntry] = useState<DailyEntry | null>(null)
   const [events7j, setEvents7j] = useState<SuiviEvent[]>([])
@@ -180,12 +183,20 @@ export default function AccueilScreen({ dog }: Props) {
         <h2 className="text-xl font-bold text-slate-900">Bonjour, voici la journée de {dog.name}</h2>
       </div>
 
-      {alertes.map((a) => (
-        <Card key={a.id} className="bg-red-50 ring-2 ring-red-200">
-          <p className="text-sm font-bold text-red-800">⚠️ {a.titre}</p>
-          <p className="mt-1 text-sm text-red-700">{a.description}</p>
-        </Card>
-      ))}
+      {alertes.length > 0 && !isPremium && (
+        <Verrou
+          titre="Alertes cliniques"
+          description="Un signal a été repéré dans les données de la semaine (vomissements répétés, reflux fréquents, score fécal en dégradation ou crise prolongée) — réservé au premium."
+        />
+      )}
+
+      {isPremium &&
+        alertes.map((a) => (
+          <Card key={a.id} className="bg-red-50 ring-2 ring-red-200">
+            <p className="text-sm font-bold text-red-800">⚠️ {a.titre}</p>
+            <p className="mt-1 text-sm text-red-700">{a.description}</p>
+          </Card>
+        ))}
 
       {derniereCrise !== undefined && (
         <Card className={enCrise ? 'ring-2 ring-red-200' : ''}>
