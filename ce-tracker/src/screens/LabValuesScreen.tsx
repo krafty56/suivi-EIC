@@ -53,6 +53,13 @@ export default function LabValuesScreen({ dogId }: Props) {
     else void charger()
   }
 
+  async function supprimerMesure(id: string) {
+    if (!confirm('Supprimer cette mesure ?')) return
+    const { error: dbError } = await supabase.from('lab_values').delete().eq('id', id)
+    if (dbError) setError(dbError.message)
+    else void charger()
+  }
+
   const imports = useMemo(() => (valeurs ? grouperParImport(valeurs) : []), [valeurs])
   const groupes = useMemo(() => (valeurs ? grouperParParametre(valeurs) : []), [valeurs])
 
@@ -167,7 +174,9 @@ export default function LabValuesScreen({ dogId }: Props) {
               <p className="text-sm text-slate-500">Aucun paramètre ne correspond.</p>
             </Card>
           ) : (
-            filtres.map((groupe) => <ParametreCard key={groupe.key} groupe={groupe} />)
+            filtres.map((groupe) => (
+              <ParametreCard key={groupe.key} groupe={groupe} onSupprimer={supprimerMesure} />
+            ))
           )}
         </>
       )}
@@ -253,7 +262,13 @@ function Puce({
   )
 }
 
-function ParametreCard({ groupe }: { groupe: ParameterGroup }) {
+function ParametreCard({
+  groupe,
+  onSupprimer,
+}: {
+  groupe: ParameterGroup
+  onSupprimer: (id: string) => void
+}) {
   const [ouvert, setOuvert] = useState(false)
   const { mesures, derniere, unitesHeterogenes } = groupe
   const tendance = calculerTendance(mesures)
@@ -345,7 +360,8 @@ function ParametreCard({ groupe }: { groupe: ParameterGroup }) {
                 <th className="pb-1 pr-2 font-medium">Date</th>
                 <th className="pb-1 pr-2 text-right font-medium">Valeur</th>
                 <th className="pb-1 pr-2 font-medium">Unité</th>
-                <th className="pb-1 text-right font-medium">Réf.</th>
+                <th className="pb-1 pr-2 text-right font-medium">Réf.</th>
+                <th className="pb-1" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -358,8 +374,18 @@ function ParametreCard({ groupe }: { groupe: ParameterGroup }) {
                     {m.value !== null ? m.value : (m.value_text ?? '—')}
                   </td>
                   <td className="py-1.5 pr-2 text-slate-500">{m.unit ?? '—'}</td>
-                  <td className="py-1.5 text-right text-slate-500 tabular-nums">
+                  <td className="py-1.5 pr-2 text-right text-slate-500 tabular-nums">
                     {m.ref_low !== null && m.ref_high !== null ? `${m.ref_low} – ${m.ref_high}` : '—'}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onSupprimer(m.id)}
+                      aria-label="Supprimer cette mesure"
+                      className="text-slate-400 hover:text-red-600"
+                    >
+                      &times;
+                    </button>
                   </td>
                 </tr>
               ))}
