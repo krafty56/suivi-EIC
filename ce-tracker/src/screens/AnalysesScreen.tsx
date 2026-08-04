@@ -12,9 +12,10 @@ import {
   YAxis,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
-import type { Crise, DailyEntry, FoodEntry, SuiviEvent } from '../lib/types'
+import type { Crise, DailyEntry, DogMedication, FoodEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
 import { usePremium } from '../lib/premium'
+import { comparerTraitements, type ComparaisonTraitement } from '../lib/reponseTraitement'
 import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
@@ -100,6 +101,8 @@ export default function AnalysesScreen({ dogId }: Props) {
   const [crises, setCrises] = useState<Crise[]>([])
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [traitements, setTraitements] = useState<ComparaisonTraitement[] | null>(null)
+  const [verrouTraitementsOuvert, setVerrouTraitementsOuvert] = useState(false)
 
   useEffect(() => {
     try {
@@ -169,6 +172,84 @@ export default function AnalysesScreen({ dogId }: Props) {
     }
     void load()
   }, [dogId, debut, fin])
+
+  // Comparaison avant/après traitement : réservée au premium, et indépendante
+  // de la période choisie pour les graphiques — un traitement démarré avant
+  // la fenêtre affichée doit quand même apparaître ici.
+  useEffect(() => {
+    if (!isPremium) {
+      setTraitements(null)
+      return
+    }
+    let annule = false
+    async function load() {
+      const { data: medsData, error: medsError } = await supabase
+        .from('dog_medications')
+        .select('*')
+        .eq('dog_id', dogId)
+        .eq('actif', true)
+      if (medsError || annule) return
+      const medications = (medsData ?? []) as DogMedication[]
+      if (medications.length === 0) {
+        if (!annule) setTraitements([])
+        return
+      }
+
+      const { data: teData, error: teError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('dog_id', dogId)
+        .eq('type', 'traitement')
+        .order('at')
+        .limit(5000)
+      if (teError || annule) return
+      const traitementEvents = (teData ?? []) as SuiviEvent[]
+
+      const debuts = medications
+        .map((m) => traitementEvents.find((e) => e.dog_medication_id === m.id))
+        .filter((e): e is SuiviEvent => e !== undefined)
+        .map((e) => jourDe(e.at))
+      if (debuts.length === 0) {
+        if (!annule) setTraitements([])
+        return
+      }
+
+      const aujourdhui = todayISO()
+      const fenetreDebut = reculerDe(debuts.sort()[0], 14)
+
+      const [e, c, ev] = await Promise.all([
+        supabase.from('daily_entries').select('*').eq('dog_id', dogId).gte('date', fenetreDebut).lte('date', aujourdhui),
+        supabase
+          .from('crises')
+          .select('*')
+          .eq('dog_id', dogId)
+          .lte('date_debut', aujourdhui)
+          .or(`date_fin.is.null,date_fin.gte.${fenetreDebut}`),
+        supabase
+          .from('events')
+          .select('*')
+          .eq('dog_id', dogId)
+          .gte('at', `${fenetreDebut}T00:00:00`)
+          .limit(10000),
+      ])
+      if (annule || e.error || c.error || ev.error) return
+
+      setTraitements(
+        comparerTraitements(
+          medications,
+          traitementEvents,
+          e.data as DailyEntry[],
+          ev.data as SuiviEvent[],
+          c.data as Crise[],
+          aujourdhui,
+        ),
+      )
+    }
+    void load()
+    return () => {
+      annule = true
+    }
+  }, [dogId, isPremium])
 
   function choisirPreset(periode: (typeof PERIODES)[number]) {
     if (periode.premium && !isPremium) {
@@ -448,6 +529,58 @@ export default function AnalysesScreen({ dogId }: Props) {
               Échelle de Purina, de 1 (très dure) à 7 (liquide). Le plus élevé de la journée.
             </p>
           </Card>
+
+          <Card
+            className={!isPremium ? 'opacity-60' : ''}
+            onClick={() => !isPremium && setVerrouTraitementsOuvert(true)}
+          >
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              {isPremium ? 'Réponse aux traitements' : '🔒 Réponse aux traitements'}
+            </p>
+            {!isPremium ? (
+              <p className="text-sm text-slate-500">
+                Compare automatiquement l'état du chien avant et après le début de chaque
+                traitement actif.
+              </p>
+            ) : traitements === null ? (
+              <Spinner />
+            ) : traitements.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-500">
+                Pas encore assez de recul pour comparer un traitement (au moins 3 jours depuis
+                son début, avec des données saisies avant et après).
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {traitements.map((t) => (
+                  <div key={t.medicationId} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
+                    <p className="text-sm font-semibold text-slate-800">{t.nom}</p>
+                    <p className="mb-2 text-xs text-slate-500">Depuis le {formatShortDate(t.dateDebut)}</p>
+                    <div className="grid grid-cols-3 gap-y-1 gap-x-2 text-xs">
+                      <p />
+                      <p className="text-center font-medium text-slate-500">Avant</p>
+                      <p className="text-center font-medium text-slate-500">Après</p>
+
+                      <p className="text-slate-600">Score fécal</p>
+                      <p className="text-center tabular-nums text-slate-800">
+                        {t.avant.scoreMoyen !== null ? t.avant.scoreMoyen.toFixed(1) : '—'}
+                      </p>
+                      <p className="text-center tabular-nums text-slate-800">
+                        {t.apres.scoreMoyen !== null ? t.apres.scoreMoyen.toFixed(1) : '—'}
+                      </p>
+
+                      <p className="text-slate-600">Jours en crise</p>
+                      <p className="text-center tabular-nums text-slate-800">{t.avant.joursEnCrise}</p>
+                      <p className="text-center tabular-nums text-slate-800">{t.apres.joursEnCrise}</p>
+
+                      <p className="text-slate-600">Vomissements</p>
+                      <p className="text-center tabular-nums text-slate-800">{t.avant.vomissements}</p>
+                      <p className="text-center tabular-nums text-slate-800">{t.apres.vomissements}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </>
       )}
 
@@ -456,6 +589,15 @@ export default function AnalysesScreen({ dogId }: Props) {
           <Verrou
             titre="Analyses étendues"
             description="Au-delà de 30 jours, ou avec une période personnalisée, les graphiques sont réservés au premium."
+          />
+        </Sheet>
+      )}
+
+      {verrouTraitementsOuvert && (
+        <Sheet title="Réponse aux traitements" onClose={() => setVerrouTraitementsOuvert(false)}>
+          <Verrou
+            titre="Réponse aux traitements"
+            description="Compare automatiquement le score fécal, les crises et les vomissements avant et après le début de chaque traitement actif, pour visualiser son effet réel."
           />
         </Sheet>
       )}
