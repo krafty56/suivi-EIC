@@ -4,15 +4,17 @@ import { supabase } from '../lib/supabase'
 import type { LabValue } from '../lib/types'
 import {
   CATEGORIE_LABELS,
+  calculerFlag,
   calculerTendance,
   grouperParImport,
   grouperParParametre,
   libelleFlag,
+  parseValeur,
   resumerParametre,
   type ParameterGroup,
 } from '../lib/labValues'
 import { formatLongDate, formatShortDateAvecAnnee } from '../lib/date'
-import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
+import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import LabAnalysisImportSheet from './LabAnalysisImport'
 
 type Props = { dogId: string }
@@ -31,6 +33,7 @@ export default function LabValuesScreen({ dogId }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [importOuvert, setImportOuvert] = useState(false)
   const [gererOuvert, setGererOuvert] = useState(false)
+  const [enEdition, setEnEdition] = useState<LabValue | null>(null)
 
   async function charger() {
     const { data, error: dbError } = await supabase
@@ -58,6 +61,22 @@ export default function LabValuesScreen({ dogId }: Props) {
     const { error: dbError } = await supabase.from('lab_values').delete().eq('id', id)
     if (dbError) setError(dbError.message)
     else void charger()
+  }
+
+  async function modifierMesure(
+    id: string,
+    patch: { value: number | null; value_text: string | null; ref_low: number | null; ref_high: number | null },
+  ) {
+    const { error: dbError } = await supabase
+      .from('lab_values')
+      .update({ ...patch, flag: calculerFlag(patch.value, patch.ref_low, patch.ref_high) })
+      .eq('id', id)
+    if (dbError) {
+      setError(dbError.message)
+      return
+    }
+    setEnEdition(null)
+    void charger()
   }
 
   const imports = useMemo(() => (valeurs ? grouperParImport(valeurs) : []), [valeurs])
@@ -175,7 +194,12 @@ export default function LabValuesScreen({ dogId }: Props) {
             </Card>
           ) : (
             filtres.map((groupe) => (
-              <ParametreCard key={groupe.key} groupe={groupe} onSupprimer={supprimerMesure} />
+              <ParametreCard
+                key={groupe.key}
+                groupe={groupe}
+                onSupprimer={supprimerMesure}
+                onModifier={setEnEdition}
+              />
             ))
           )}
         </>
@@ -195,7 +219,83 @@ export default function LabValuesScreen({ dogId }: Props) {
       {gererOuvert && (
         <GererImportsSheet imports={imports} onSupprimer={supprimerImport} onClose={() => setGererOuvert(false)} />
       )}
+
+      {enEdition && (
+        <EditMesureSheet
+          mesure={enEdition}
+          onEnregistrer={modifierMesure}
+          onClose={() => setEnEdition(null)}
+        />
+      )}
     </div>
+  )
+}
+
+function EditMesureSheet({
+  mesure,
+  onEnregistrer,
+  onClose,
+}: {
+  mesure: LabValue
+  onEnregistrer: (
+    id: string,
+    patch: { value: number | null; value_text: string | null; ref_low: number | null; ref_high: number | null },
+  ) => void
+  onClose: () => void
+}) {
+  const [valeur, setValeur] = useState(mesure.value !== null ? String(mesure.value) : (mesure.value_text ?? ''))
+  const [refLow, setRefLow] = useState<number | null>(mesure.ref_low)
+  const [refHigh, setRefHigh] = useState<number | null>(mesure.ref_high)
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    onEnregistrer(mesure.id, { ...parseValeur(valeur), ref_low: refLow, ref_high: refHigh })
+  }
+
+  return (
+    <Sheet title={mesure.parameter_label} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-xs text-slate-500">
+          {formatShortDateAvecAnnee(mesure.date)}
+          {mesure.lab_name ? ` · ${mesure.lab_name}` : ''}
+        </p>
+
+        <Field label={`Valeur${mesure.unit ? ` (${mesure.unit})` : ''}`}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={valeur}
+            onChange={(e) => setValeur(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Référence min">
+            <input
+              type="number"
+              step="any"
+              value={refLow ?? ''}
+              onChange={(e) => setRefLow(e.target.value === '' ? null : Number(e.target.value))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Référence max">
+            <input
+              type="number"
+              step="any"
+              value={refHigh ?? ''}
+              onChange={(e) => setRefHigh(e.target.value === '' ? null : Number(e.target.value))}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+
+        <Button type="submit" className="w-full">
+          Enregistrer
+        </Button>
+      </form>
+    </Sheet>
   )
 }
 
@@ -265,9 +365,11 @@ function Puce({
 function ParametreCard({
   groupe,
   onSupprimer,
+  onModifier,
 }: {
   groupe: ParameterGroup
   onSupprimer: (id: string) => void
+  onModifier: (mesure: LabValue) => void
 }) {
   const [ouvert, setOuvert] = useState(false)
   const { mesures, derniere, unitesHeterogenes } = groupe
@@ -366,7 +468,11 @@ function ParametreCard({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {[...mesures].reverse().map((m) => (
-                <tr key={m.id}>
+                <tr
+                  key={m.id}
+                  onClick={() => onModifier(m)}
+                  className="cursor-pointer hover:bg-slate-50"
+                >
                   <td className="py-1.5 pr-2 tabular-nums text-slate-700">
                     {formatShortDateAvecAnnee(m.date)}
                   </td>
@@ -380,7 +486,10 @@ function ParametreCard({
                   <td className="py-1.5 text-right">
                     <button
                       type="button"
-                      onClick={() => onSupprimer(m.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSupprimer(m.id)
+                      }}
                       aria-label="Supprimer cette mesure"
                       className="text-slate-400 hover:text-red-600"
                     >

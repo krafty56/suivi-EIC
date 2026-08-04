@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { LabValue } from '../lib/types'
-import { CATEGORIE_LABELS, calculerFlag } from '../lib/labValues'
+import { CATEGORIE_LABELS, calculerFlag, parseValeur } from '../lib/labValues'
 import { todayISO } from '../lib/date'
 import { Button, ErrorMessage, Field, Sheet, inputClass } from '../components/ui'
 import { LAB_BUCKET } from '../lib/storage'
@@ -35,17 +35,6 @@ function slugify(texte: string): string {
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '') || 'parametre'
   )
-}
-
-/** Sépare une saisie libre en valeur numérique ou texte, comme pour
- * l'albuminémie ailleurs dans l'app : virgule ou point acceptés. */
-function parseValeur(saisie: string): { value: number | null; value_text: string | null } {
-  const brut = saisie.trim()
-  if (!brut) return { value: null, value_text: null }
-  const nombre = Number(brut.replace(',', '.'))
-  return Number.isFinite(nombre) && /^-?[\d,.\s]+$/.test(brut)
-    ? { value: nombre, value_text: null }
-    : { value: null, value_text: brut }
 }
 
 export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Props) {

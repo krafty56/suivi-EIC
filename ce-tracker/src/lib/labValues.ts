@@ -67,6 +67,17 @@ export function grouperParImport(valeurs: LabValue[]): ImportBatch[] {
     .sort((a, b) => b.date.localeCompare(a.date))
 }
 
+/** Sépare une saisie libre en valeur numérique ou texte : virgule ou point
+ * acceptés, comme pour les autres champs numériques de l'app. */
+export function parseValeur(saisie: string): { value: number | null; value_text: string | null } {
+  const brut = saisie.trim()
+  if (!brut) return { value: null, value_text: null }
+  const nombre = Number(brut.replace(',', '.'))
+  return Number.isFinite(nombre) && /^-?[\d,.\s]+$/.test(brut)
+    ? { value: nombre, value_text: null }
+    : { value: null, value_text: brut }
+}
+
 /** Position de la valeur par rapport à l'intervalle de référence. Ne dépend
  * jamais du jugement de l'IA d'extraction : recalculée ici, y compris après
  * une correction manuelle en relecture, pour rester fiable. */
