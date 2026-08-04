@@ -124,6 +124,10 @@ value : la valeur numérique si le résultat en est un. value_text : le texte du
 
 ref_low / ref_high : bornes de l'intervalle de référence si indiquées sur le document, sinon null.
 
+Le tableau a des colonnes distinctes, par exemple « Paramètres | Résultat | Unités | Normalités » (les noms exacts varient selon le laboratoire). La colonne du résultat mesuré (souvent « Résultat » ou « Valeur ») donne toujours value : c'est un nombre isolé à côté du nom du paramètre, avant l'unité. La colonne d'intervalle (souvent « Normalités », « Intervalle » ou « Valeurs usuelles ») donne toujours ref_low et ref_high, présentée en général comme « min - max ». Ne mélange jamais ces deux colonnes entre elles — une valeur mesurée ne doit jamais finir dans ref_low ou ref_high, et une borne de référence ne doit jamais finir dans value. Ne laisse jamais value vide quand un résultat chiffré est visible dans le tableau, même sur une photo de mauvaise qualité : fais de ton mieux plutôt que d'omettre la valeur.
+
+La photo peut être prise dans n'importe quelle orientation (portrait, paysage, à l'envers) : oriente mentalement le texte avant de le lire plutôt que de te fier au sens de la photo.
+
 Si la photo est illisible ou ne contient pas d'analyse de laboratoire, renvoie une liste de paramètres vide plutôt que d'inventer des valeurs.`
 
 type ExtractionResult = {
