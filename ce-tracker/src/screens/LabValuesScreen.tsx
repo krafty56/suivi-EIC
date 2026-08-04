@@ -136,6 +136,10 @@ export default function LabValuesScreen({ dogId }: Props) {
             )}
           </Card>
 
+          <Button type="button" className="w-full" onClick={() => setImportOuvert(true)}>
+            Ajouter une analyse
+          </Button>
+
           <input
             type="search"
             value={recherche}
@@ -165,10 +169,6 @@ export default function LabValuesScreen({ dogId }: Props) {
           ) : (
             filtres.map((groupe) => <ParametreCard key={groupe.key} groupe={groupe} />)
           )}
-
-          <Button type="button" className="w-full" onClick={() => setImportOuvert(true)}>
-            Ajouter une analyse
-          </Button>
         </>
       )}
 
