@@ -44,7 +44,7 @@ export function detecterAlertes(
   const reflux24h = events.filter(
     (e) => e.type === 'symptome' && e.nom === 'Reflux' && heuresDepuis(e.at, maintenant) <= 24,
   ).length
-  if (reflux24h >= 4) {
+  if (reflux24h >= 9) {
     alertes.push({
       id: 'reflux',
       titre: 'Reflux fréquents',
