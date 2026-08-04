@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Appetit, Dog, Raccourci, SuiviEvent } from '../lib/types'
-import { CATALOGUE_SYMPTOMES, COTATIONS, TOUS_LES_SYMPTOMES } from '../data/symptomes'
+import { CATALOGUE_SYMPTOMES, COTATIONS, COTATIONS_SPECIFIQUES, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import {
   APPETIT_OPTIONS,
   COULEURS_SELLE,
@@ -458,6 +458,8 @@ function AjoutSheet({
   }
 
   const purina = choisi.type === 'selle'
+  const cotations = COTATIONS_SPECIFIQUES[choisi.nom] ?? COTATIONS
+  const cotationPersonnalisee = choisi.nom in COTATIONS_SPECIFIQUES
 
   return (
     <Sheet title={`${emojiEvenement(choisi.type, choisi.nom)} ${choisi.nom}`} onClose={onClose}>
@@ -465,10 +467,10 @@ function AjoutSheet({
         {choisi.echelle && (
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">
-              {purina ? 'Score fécal' : 'Intensité'}
+              {purina ? 'Score fécal' : cotationPersonnalisee ? 'Qualité' : 'Intensité'}
             </p>
             <div className={`grid gap-1.5 ${purina ? 'grid-cols-7' : 'grid-cols-3'}`}>
-              {(purina ? FECAL_SCORES.map((f) => f.score) : COTATIONS.map((c) => c.valeur)).map(
+              {(purina ? FECAL_SCORES.map((f) => f.score) : cotations.map((c) => c.valeur)).map(
                 (v) => (
                   <button
                     key={v}
@@ -491,7 +493,7 @@ function AjoutSheet({
                 ? 'Aucune valeur sélectionnée.'
                 : purina
                   ? FECAL_SCORES.find((f) => f.score === intensite)?.description
-                  : COTATIONS.find((c) => c.valeur === intensite)?.label}
+                  : cotations.find((c) => c.valeur === intensite)?.label}
             </p>
             {purina && (
               <a

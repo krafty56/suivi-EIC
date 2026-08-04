@@ -59,6 +59,13 @@ export const CATALOGUE_SYMPTOMES: { categorie: string; symptomes: SymptomeDef[] 
       { nom: 'Agitation / incapacité à se poser', echelle: true },
     ],
   },
+  {
+    categorie: 'Bien-être',
+    symptomes: [
+      { nom: 'Sommeil', echelle: true },
+      { nom: 'Repos', echelle: false },
+    ],
+  },
 ]
 
 /** Libellés des cotations de l'échelle 1-3. */
@@ -67,6 +74,17 @@ export const COTATIONS: { valeur: 1 | 2 | 3; label: string }[] = [
   { valeur: 2, label: 'Modéré' },
   { valeur: 3, label: 'Marqué' },
 ]
+
+/** Certains symptômes cotés ne se prêtent pas à l'échelle générique
+ * léger/modéré/marqué — une qualité plutôt qu'une gravité. Ce libellé
+ * remplace celui de COTATIONS pour le symptôme nommé, à valeurs égales. */
+export const COTATIONS_SPECIFIQUES: Record<string, { valeur: 1 | 2 | 3; label: string }[]> = {
+  Sommeil: [
+    { valeur: 1, label: 'Léger' },
+    { valeur: 2, label: 'Réparateur' },
+    { valeur: 3, label: 'Mauvais' },
+  ],
+}
 
 export const TOUS_LES_SYMPTOMES = CATALOGUE_SYMPTOMES.flatMap((groupe) =>
   groupe.symptomes.map((symptome) => ({ ...symptome, categorie: groupe.categorie })),

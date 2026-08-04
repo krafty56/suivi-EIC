@@ -31,6 +31,9 @@ const EMOJI_SYMPTOME: Record<string, string> = {
   'Déclenchement humain': '🙋',
   'Déclenchement chien': '🐕',
   'Agitation / incapacité à se poser': '😰',
+  // Bien-être
+  Sommeil: '💤',
+  Repos: '🛌',
 }
 
 /** Quelques activités du catalogue de suggestions ont un emoji dédié ; les
