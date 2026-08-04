@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Appetit, DailyEntry, Dog, DogMedication, Energie, SuiviEvent } from '../lib/types'
 import { APPETIT_OPTIONS, ENERGIE_OPTIONS } from '../data/catalogs'
-import { formatTime, todayISO } from '../lib/date'
+import { formatTime, horodatage, todayISO } from '../lib/date'
 import {
   Button,
   Card,
@@ -159,6 +159,62 @@ export default function SaisirHubScreen({ dog, onDogChange }: Props) {
         setBusy(false)
         setError(logsError.message)
         return
+      }
+
+      // Une prise cochée doit aussi apparaître dans la liste du jour et le
+      // journal, comme une prise saisie via la fiche Traitement — sans quoi
+      // elle ne comptait que dans la checklist, invisible partout ailleurs.
+      const medsPrises = medications.filter((m) => takenMeds.has(m.id))
+      if (medsPrises.length > 0) {
+        const debutJour = new Date(`${date}T00:00:00`)
+        const finJour = new Date(debutJour)
+        finJour.setDate(finJour.getDate() + 1)
+
+        const { data: existants, error: existantsError } = await supabase
+          .from('events')
+          .select('dog_medication_id')
+          .eq('dog_id', dog.id)
+          .eq('type', 'traitement')
+          .gte('at', debutJour.toISOString())
+          .lt('at', finJour.toISOString())
+          .in(
+            'dog_medication_id',
+            medsPrises.map((m) => m.id),
+          )
+
+        if (existantsError) {
+          setBusy(false)
+          setError(existantsError.message)
+          return
+        }
+
+        const dejaHorodatees = new Set((existants ?? []).map((e) => e.dog_medication_id))
+        const aHorodater = medsPrises.filter((m) => !dejaHorodatees.has(m.id))
+
+        if (aHorodater.length > 0) {
+          const { error: eventsError } = await supabase.from('events').insert(
+            aHorodater.map((m) => ({
+              dog_id: dog.id,
+              // Heure habituelle du médicament si connue, sinon midi — comme
+              // les pesées sans heure précise.
+              at: horodatage(date, m.heure_prise ?? '12:00'),
+              type: 'traitement' as const,
+              nom: m.nom_medicament,
+              categorie: null,
+              intensite: null,
+              dog_medication_id: m.id,
+            })),
+          )
+          if (eventsError) {
+            setBusy(false)
+            setError(eventsError.message)
+            return
+          }
+          // Le journal affiché plus haut sur cet écran doit refléter
+          // immédiatement le nouvel événement, sans attendre un changement
+          // d'onglet.
+          setRefreshSignal((n) => n + 1)
+        }
       }
     }
 
