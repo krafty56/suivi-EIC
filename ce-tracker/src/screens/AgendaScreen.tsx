@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Appointment } from '../lib/types'
 import { formatLongDate, formatTime, todayISO } from '../lib/date'
+import { usePremium } from '../lib/premium'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
+import { Verrou } from '../components/Verrou'
 
-type Props = { dogId: string }
+type Props = { dogId: string; onPreparer: (appointment: Appointment) => void }
 
 const SUGGESTIONS_MOTIF = [
   'Consultation de contrôle',
@@ -21,13 +23,20 @@ const ONGLETS_REPERES = [
 
 type OngletRepere = (typeof ONGLETS_REPERES)[number]['id']
 
-export default function AgendaScreen({ dogId }: Props) {
+export default function AgendaScreen({ dogId, onPreparer }: Props) {
+  const { isPremium } = usePremium()
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
   const [reperesOuverts, setReperesOuverts] = useState(false)
   const [informationsOuvertes, setInformationsOuvertes] = useState(false)
   const [ongletRepere, setOngletRepere] = useState<OngletRepere>('grele_colon')
+  const [verrouOuvert, setVerrouOuvert] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function preparer(r: Appointment) {
+    if (isPremium) onPreparer(r)
+    else setVerrouOuvert(true)
+  }
 
   const load = useCallback(async () => {
     const { data, error: dbError } = await supabase
@@ -252,7 +261,14 @@ export default function AgendaScreen({ dogId }: Props) {
         ) : (
           <div className="space-y-2">
             {aVenir.map((r) => (
-              <LigneRendezVous key={r.id} r={r} onEdit={() => setAjout(r)} onDelete={() => void supprimer(r.id)} />
+              <LigneRendezVous
+                key={r.id}
+                r={r}
+                isPremium={isPremium}
+                onEdit={() => setAjout(r)}
+                onDelete={() => void supprimer(r.id)}
+                onPreparer={() => preparer(r)}
+              />
             ))}
           </div>
         )}
@@ -282,6 +298,15 @@ export default function AgendaScreen({ dogId }: Props) {
             void load()
           }}
         />
+      )}
+
+      {verrouOuvert && (
+        <Sheet title="Préparation du rendez-vous" onClose={() => setVerrouOuvert(false)}>
+          <Verrou
+            titre="Préparation du rendez-vous"
+            description="Une fiche de synthèse (crises, traitement, poids, laboratoire depuis le dernier rendez-vous) prête à emporter ou imprimer — réservée au premium."
+          />
+        </Sheet>
       )}
     </div>
   )
@@ -330,12 +355,16 @@ function ListeReperes({ items }: { items: string[] }) {
 
 function LigneRendezVous({
   r,
+  isPremium,
   onEdit,
   onDelete,
+  onPreparer,
 }: {
   r: Appointment
+  isPremium?: boolean
   onEdit: () => void
   onDelete: () => void
+  onPreparer?: () => void
 }) {
   return (
     <Card className="p-0">
@@ -367,6 +396,15 @@ function LigneRendezVous({
           &times;
         </button>
       </div>
+      {onPreparer && (
+        <button
+          type="button"
+          onClick={onPreparer}
+          className="block w-full border-t border-slate-100 px-4 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50"
+        >
+          {isPremium ? '🩺 Préparer ce rendez-vous' : '🔒 Préparer ce rendez-vous'}
+        </button>
+      )}
     </Card>
   )
 }

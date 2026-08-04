@@ -5,6 +5,7 @@ export type StatsFenetre = {
   scoreMoyen: number | null
   joursEnCrise: number
   vomissements: number
+  reflux: number
   joursCouverts: number
 }
 
@@ -24,7 +25,12 @@ function ajouterJours(date: string, jours: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-function statsFenetre(
+/** Statistiques chiffrées d'une fenêtre [debut, fin] : score fécal moyen,
+ * jours en crise, vomissements, reflux — les mêmes repères que les
+ * graphiques d'Analyses, mais agrégés en quelques nombres plutôt qu'un
+ * point par jour. Réutilisée par la comparaison avant/après traitement et
+ * par la fiche de préparation au rendez-vous. */
+export function statsFenetre(
   debut: string,
   fin: string,
   entries: DailyEntry[],
@@ -61,7 +67,11 @@ function statsFenetre(
 
   const vomissements = entriesFenetre.reduce((s, e) => s + e.vomissements_count, 0)
 
-  return { scoreMoyen, joursEnCrise, vomissements, joursCouverts: entriesFenetre.length }
+  const reflux = events.filter(
+    (e) => e.type === 'symptome' && e.nom === 'Reflux' && jourDe(e.at) >= debut && jourDe(e.at) <= fin,
+  ).length
+
+  return { scoreMoyen, joursEnCrise, vomissements, reflux, joursCouverts: entriesFenetre.length }
 }
 
 /** Compare l'état du chien avant/après le début de chaque traitement actif,

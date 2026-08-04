@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
-import type { Dog } from './lib/types'
+import type { Appointment, Dog } from './lib/types'
 import AccueilScreen from './screens/AccueilScreen'
 import AgendaScreen from './screens/AgendaScreen'
 import AuthScreen from './screens/AuthScreen'
@@ -9,6 +9,7 @@ import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
 import SaisirHubScreen from './screens/SaisirHubScreen'
 import ExportPdfScreen from './screens/ExportPdfScreen'
+import FichePreparationScreen from './screens/FichePreparationScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabHubScreen from './screens/LabHubScreen'
 import PremiumScreen from './screens/PremiumScreen'
@@ -93,6 +94,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('home')
   const [exportOuvert, setExportOuvert] = useState(false)
+  const [fichePrep, setFichePrep] = useState<Appointment | null>(null)
   const [premiumOuvert, setPremiumOuvert] = useState(false)
   const [messagePremium, setMessagePremium] = useState(premiumRedirect)
   // Le lien « mot de passe oublié » ouvre une session normalement, mais ce
@@ -166,6 +168,9 @@ export default function App() {
   // Rendu hors coquille (pas de hauteur fixe, pas de scroll interne) : sinon
   // window.print() ne sort que la portion actuellement visible à l'écran.
   if (exportOuvert) return <ExportPdfScreen dog={dog} onClose={() => setExportOuvert(false)} />
+  if (fichePrep) {
+    return <FichePreparationScreen dog={dog} appointment={fichePrep} onClose={() => setFichePrep(null)} />
+  }
 
   const currentTab = TABS.find((item) => item.id === tab)!
 
@@ -226,7 +231,7 @@ export default function App() {
             </Suspense>
           )}
           {tab === 'labs' && <LabHubScreen dogId={dog.id} />}
-          {tab === 'agenda' && <AgendaScreen dogId={dog.id} />}
+          {tab === 'agenda' && <AgendaScreen dogId={dog.id} onPreparer={setFichePrep} />}
           {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
         </main>
 
