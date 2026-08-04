@@ -493,6 +493,16 @@ function AjoutSheet({
                   ? FECAL_SCORES.find((f) => f.score === intensite)?.description
                   : COTATIONS.find((c) => c.valeur === intensite)?.label}
             </p>
+            {purina && (
+              <a
+                href="https://www.purinainstitute.com/sites/default/files/2024-08/fecal-scoring-chart-FR.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-sm font-medium text-brand-700 underline"
+              >
+                Voir la grille illustrée Purina (PDF)
+              </a>
+            )}
           </div>
         )}
 
