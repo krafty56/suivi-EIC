@@ -200,8 +200,12 @@ export default function LabAnalysisImportSheet({ dogId, onClose, onSaved }: Prop
       {etape === 'photo' && (
         <form onSubmit={analyser} className="space-y-4">
           <p className="text-sm text-slate-600">
-            Prenez une photo nette du tableau de résultats. L’app lit les paramètres et vous les
-            propose à relire avant de les enregistrer.
+            Prenez une photo du tableau de résultats. L’app lit les paramètres et vous les propose
+            à relire avant de les enregistrer.
+          </p>
+          <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
+            Pour une lecture fiable : photo à la verticale (portrait), bonne luminosité, tableau
+            net et bien cadré.
           </p>
           <Field label="Photo de l’analyse" hint="Prenez la photo ou choisissez-la dans votre galerie.">
             <input
