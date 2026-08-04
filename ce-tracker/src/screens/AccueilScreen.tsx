@@ -183,7 +183,7 @@ export default function AccueilScreen({ dog }: Props) {
   if (error) return <div className="p-4"><ErrorMessage>{error}</ErrorMessage></div>
   if (events === null) return <Spinner />
 
-  const comptes = (['symptome', 'selle', 'repas', 'activite'] as const).map((type) => ({
+  const comptes = (['symptome', 'selle', 'repas'] as const).map((type) => ({
     type,
     label: LABEL_TYPE_EVENEMENT[type],
     compte: events.filter((e) => e.type === type).length,
@@ -298,7 +298,7 @@ export default function AccueilScreen({ dog }: Props) {
       )}
 
       <Card>
-        <div className="grid grid-cols-4 divide-x divide-slate-200 text-center">
+        <div className="grid grid-cols-3 divide-x divide-slate-200 text-center">
           {comptes.map((c) => (
             <div key={c.type}>
               <p className="text-xl font-bold tabular-nums text-slate-900">{c.compte}</p>
