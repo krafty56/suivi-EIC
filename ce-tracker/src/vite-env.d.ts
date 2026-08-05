@@ -11,3 +11,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** Injectée par vite.config.ts au build : identifie ce déploiement pour le
+ * bandeau de mise à jour. */
+declare const __APP_VERSION__: string

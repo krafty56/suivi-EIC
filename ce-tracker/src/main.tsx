@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import UpdateBanner from './components/UpdateBanner'
 import './index.css'
 
 // Enregistré au chargement, indépendamment de la connexion : c'est le
@@ -14,5 +15,6 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <UpdateBanner />
   </StrictMode>,
 )
