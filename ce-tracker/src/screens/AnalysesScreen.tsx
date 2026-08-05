@@ -151,15 +151,6 @@ export default function AnalysesScreen({ dogId }: Props) {
     [traitements, medicamentsChoisis],
   )
 
-  // Une prise matin et soir du même médicament donne deux lignes
-  // dog_medications : le sélecteur ne doit en montrer qu'une, cochée/décochée
-  // pour l'ensemble des créneaux du médicament plutôt que par ligne.
-  const groupesMedicaments = useMemo(() => {
-    const map = new Map<string, string[]>()
-    for (const m of medicamentsActifs) map.set(m.nom_medicament, [...(map.get(m.nom_medicament) ?? []), m.id])
-    return [...map.entries()].map(([nom, ids]) => ({ nom, ids }))
-  }, [medicamentsActifs])
-
   useEffect(() => {
     try {
       localStorage.setItem(STOCKAGE_CLE, JSON.stringify({ presetActif, debut, fin }))
@@ -731,53 +722,90 @@ export default function AnalysesScreen({ dogId }: Props) {
       )}
 
       {choixTraitementsOuvert && (
-        <Sheet title="Traitements à comparer" onClose={() => setChoixTraitementsOuvert(false)}>
-          <p className="mb-4 text-sm text-slate-600">
-            Choisissez les traitements à inclure dans la comparaison avant/après. Tous sont pris
-            en compte par défaut, y compris ceux trop récents pour avoir déjà des chiffres.
-          </p>
-          <div className="space-y-1.5">
-            {groupesMedicaments.map((groupe) => {
-              const coche = medicamentsChoisis === null || groupe.ids.some((id) => medicamentsChoisis.includes(id))
-              return (
-                <label
-                  key={groupe.nom}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
-                    coche ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={coche}
-                    onChange={() =>
-                      setMedicamentsChoisis((current) => {
-                        const tousLesIds = medicamentsActifs.map((med) => med.id)
-                        const base = current ?? tousLesIds
-                        const dejaCoche = groupe.ids.some((id) => base.includes(id))
-                        return dejaCoche
-                          ? base.filter((id) => !groupe.ids.includes(id))
-                          : [...base, ...groupe.ids.filter((id) => !base.includes(id))]
-                      })
-                    }
-                    className="h-4 w-4 shrink-0 accent-brand-700"
-                  />
-                  <span className="flex-1 text-sm text-slate-800">{groupe.nom}</span>
-                </label>
-              )
-            })}
-          </div>
-          {medicamentsChoisis !== null && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-3 w-full py-2.5 text-sm"
-              onClick={() => setMedicamentsChoisis(null)}
-            >
-              Tout sélectionner
-            </Button>
-          )}
-        </Sheet>
+        <ChoixTraitementsSheet
+          medicamentsActifs={medicamentsActifs}
+          choixInitial={medicamentsChoisis}
+          onClose={() => setChoixTraitementsOuvert(false)}
+          onSave={(choix) => {
+            setMedicamentsChoisis(choix)
+            setChoixTraitementsOuvert(false)
+          }}
+        />
       )}
     </div>
+  )
+}
+
+/** Un même médicament pris matin et soir donne deux lignes dog_medications
+ * (une par heure de prise) : regroupées ici sous un seul nom, cochées ou
+ * décochées ensemble. La sélection ne s'applique qu'au clic sur
+ * "Enregistrer", pour que cocher une case ne modifie jamais silencieusement
+ * la comparaison affichée derrière la feuille. */
+function ChoixTraitementsSheet({
+  medicamentsActifs,
+  choixInitial,
+  onClose,
+  onSave,
+}: {
+  medicamentsActifs: DogMedication[]
+  choixInitial: string[] | null
+  onClose: () => void
+  onSave: (choix: string[] | null) => void
+}) {
+  const [choix, setChoix] = useState<string[] | null>(choixInitial)
+
+  const groupes = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const m of medicamentsActifs) map.set(m.nom_medicament, [...(map.get(m.nom_medicament) ?? []), m.id])
+    return [...map.entries()].map(([nom, ids]) => ({ nom, ids }))
+  }, [medicamentsActifs])
+
+  function basculer(groupe: { ids: string[] }) {
+    setChoix((current) => {
+      const tousLesIds = medicamentsActifs.map((m) => m.id)
+      const base = current ?? tousLesIds
+      const dejaCoche = groupe.ids.some((id) => base.includes(id))
+      return dejaCoche
+        ? base.filter((id) => !groupe.ids.includes(id))
+        : [...base, ...groupe.ids.filter((id) => !base.includes(id))]
+    })
+  }
+
+  return (
+    <Sheet title="Traitements à comparer" onClose={onClose}>
+      <p className="mb-4 text-sm text-slate-600">
+        Choisissez les traitements à inclure dans la comparaison avant/après. Tous sont pris en
+        compte par défaut, y compris ceux trop récents pour avoir déjà des chiffres.
+      </p>
+      <div className="space-y-1.5">
+        {groupes.map((groupe) => {
+          const coche = choix === null || groupe.ids.some((id) => choix.includes(id))
+          return (
+            <label
+              key={groupe.nom}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
+                coche ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={coche}
+                onChange={() => basculer(groupe)}
+                className="h-4 w-4 shrink-0 accent-brand-700"
+              />
+              <span className="flex-1 text-sm text-slate-800">{groupe.nom}</span>
+            </label>
+          )
+        })}
+      </div>
+      {choix !== null && (
+        <Button type="button" variant="ghost" className="mt-3 w-full py-2.5 text-sm" onClick={() => setChoix(null)}>
+          Tout sélectionner
+        </Button>
+      )}
+      <Button type="button" className="mt-4 w-full" onClick={() => onSave(choix)}>
+        Enregistrer
+      </Button>
+    </Sheet>
   )
 }
