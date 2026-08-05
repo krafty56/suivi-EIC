@@ -128,6 +128,11 @@ export default function AnalysesScreen({ dogId }: Props) {
     chargerChoixTraitements(dogId),
   )
   const [choixTraitementsOuvert, setChoixTraitementsOuvert] = useState(false)
+  // Tous les traitements actifs, indépendamment de la présence d'une
+  // comparaison chiffrée : un traitement commencé depuis moins de 3 jours
+  // n'a pas encore de statistiques mais doit rester sélectionnable, sinon
+  // impossible de le cocher à l'avance en vue de sa comparaison à venir.
+  const [medicamentsActifs, setMedicamentsActifs] = useState<DogMedication[]>([])
 
   useEffect(() => {
     try {
@@ -243,6 +248,7 @@ export default function AnalysesScreen({ dogId }: Props) {
         .eq('actif', true)
       if (medsError || annule) return
       const medications = (medsData ?? []) as DogMedication[]
+      setMedicamentsActifs(medications)
       if (medications.length === 0) {
         if (!annule) setTraitements([])
         return
@@ -622,7 +628,7 @@ export default function AnalysesScreen({ dogId }: Props) {
               <p className="text-sm font-medium text-slate-700">
                 {isPremium ? 'Réponse aux traitements' : '🔒 Réponse aux traitements'}
               </p>
-              {isPremium && traitements !== null && traitements.length > 0 && (
+              {isPremium && medicamentsActifs.length > 0 && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -715,18 +721,18 @@ export default function AnalysesScreen({ dogId }: Props) {
         </Sheet>
       )}
 
-      {choixTraitementsOuvert && traitements !== null && (
+      {choixTraitementsOuvert && (
         <Sheet title="Traitements à comparer" onClose={() => setChoixTraitementsOuvert(false)}>
           <p className="mb-4 text-sm text-slate-600">
             Choisissez les traitements à inclure dans la comparaison avant/après. Tous sont pris
-            en compte par défaut.
+            en compte par défaut, y compris ceux trop récents pour avoir déjà des chiffres.
           </p>
           <div className="space-y-1.5">
-            {traitements.map((t) => {
-              const coche = medicamentsChoisis === null || medicamentsChoisis.includes(t.medicationId)
+            {medicamentsActifs.map((m) => {
+              const coche = medicamentsChoisis === null || medicamentsChoisis.includes(m.id)
               return (
                 <label
-                  key={t.medicationId}
+                  key={m.id}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
                     coche ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
                   }`}
@@ -736,16 +742,16 @@ export default function AnalysesScreen({ dogId }: Props) {
                     checked={coche}
                     onChange={() =>
                       setMedicamentsChoisis((current) => {
-                        const tousLesIds = traitements.map((tr) => tr.medicationId)
+                        const tousLesIds = medicamentsActifs.map((med) => med.id)
                         const base = current ?? tousLesIds
-                        return base.includes(t.medicationId)
-                          ? base.filter((id) => id !== t.medicationId)
-                          : [...base, t.medicationId]
+                        return base.includes(m.id)
+                          ? base.filter((id) => id !== m.id)
+                          : [...base, m.id]
                       })
                     }
                     className="h-4 w-4 shrink-0 accent-brand-700"
                   />
-                  <span className="flex-1 text-sm text-slate-800">{t.nom}</span>
+                  <span className="flex-1 text-sm text-slate-800">{m.nom_medicament}</span>
                 </label>
               )
             })}
