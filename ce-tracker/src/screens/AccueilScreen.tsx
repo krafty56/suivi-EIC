@@ -21,7 +21,15 @@ import {
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
 import { detecterAlertes } from '../lib/alertes'
-import { formatLongDate, formatShortDate, formatTime, heureDe, joursDepuis, todayISO } from '../lib/date'
+import {
+  formatLongDate,
+  formatPlageAbsence,
+  formatShortDate,
+  formatTime,
+  heureDe,
+  joursDepuis,
+  todayISO,
+} from '../lib/date'
 import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
@@ -269,9 +277,7 @@ export default function AccueilScreen({ dog }: Props) {
                 🧳
               </span>
               <div>
-                <p className="text-sm font-medium text-slate-700">
-                  Absent depuis le {formatShortDate(absenceEnCours.date_debut)}
-                </p>
+                <p className="text-sm font-medium text-slate-700">{formatPlageAbsence(absenceEnCours)}</p>
                 <p className="text-xs text-slate-500">Aucun symptôme ne peut être noté comme fiable.</p>
               </div>
             </div>

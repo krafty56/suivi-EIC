@@ -1,6 +1,6 @@
 import { CHANGEMENT_OPTIONS } from '../data/catalogs'
 import { EMOJI_CRISE } from '../data/emoji'
-import { formatLongDate, formatShortDate } from '../lib/date'
+import { formatLongDate, formatPlageAbsence, formatShortDate } from '../lib/date'
 import { type Categorie, type Gravite, type Jour, texteLigne } from '../lib/journal'
 import { stoolPhotoUrl } from '../lib/storage'
 import type { Absence, Crise, SuiviEvent } from '../lib/types'
@@ -116,9 +116,7 @@ export default function JourCard({
             const contenu = (
               <>
                 <p className="text-sm font-bold text-slate-700">🧳 Absence signalée</p>
-                <p className="mt-0.5 text-xs font-medium text-slate-500">
-                  {absence.date_fin ? `Jusqu’au ${formatShortDate(absence.date_fin)}` : 'En cours'}
-                </p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">{formatPlageAbsence(absence)}</p>
                 {absence.note && <p className="mt-0.5 text-sm text-slate-700">{absence.note}</p>}
               </>
             )

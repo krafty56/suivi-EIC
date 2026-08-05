@@ -16,6 +16,8 @@ type Props = {
 export default function AbsenceSheet({ dogId, absence, onClose, onSaved }: Props) {
   const [dateDebut, setDateDebut] = useState(absence?.date_debut ?? todayISO())
   const [dateFin, setDateFin] = useState(absence?.date_fin ?? '')
+  const [heureDebut, setHeureDebut] = useState(absence?.heure_debut?.slice(0, 5) ?? '')
+  const [heureFin, setHeureFin] = useState(absence?.heure_fin?.slice(0, 5) ?? '')
   const [note, setNote] = useState(absence?.note ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -29,6 +31,8 @@ export default function AbsenceSheet({ dogId, absence, onClose, onSaved }: Props
       dog_id: dogId,
       date_debut: dateDebut,
       date_fin: dateFin || null,
+      heure_debut: heureDebut || null,
+      heure_fin: heureFin || null,
       note: note.trim() || null,
     }
 
@@ -71,6 +75,28 @@ export default function AbsenceSheet({ dogId, absence, onClose, onSaved }: Props
             />
           </Field>
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="À partir de" hint="Optionnel">
+            <input
+              type="time"
+              value={heureDebut}
+              onChange={(e) => setHeureDebut(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Jusqu’à" hint="Optionnel">
+            <input
+              type="time"
+              value={heureFin}
+              onChange={(e) => setHeureFin(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        <p className="-mt-2 text-xs text-slate-500">
+          Laissez vide pour une absence toute la journée.
+        </p>
 
         <Field label="Note">
           <textarea

@@ -43,6 +43,33 @@ export function formatTime(time: string | null): string | null {
   return time.slice(0, 5)
 }
 
+/** Résumé lisible du créneau d'une absence : les heures priment quand elles
+ * sont renseignées — une absence dépasse rarement 24h/24 — sinon la ou les
+ * dates seules décrivent une absence à la journée (week-end, voyage). */
+export function formatPlageAbsence(absence: {
+  date_debut: string
+  date_fin: string | null
+  heure_debut: string | null
+  heure_fin: string | null
+}): string {
+  const heureDebut = formatTime(absence.heure_debut)
+  const heureFin = formatTime(absence.heure_fin)
+  const debut = heureDebut ? `${formatShortDate(absence.date_debut)} à ${heureDebut}` : formatShortDate(absence.date_debut)
+
+  if (!absence.date_fin) return `Depuis le ${debut} · en cours`
+
+  const memeJour = absence.date_fin === absence.date_debut
+  if (memeJour && heureDebut && heureFin) {
+    return `Le ${formatShortDate(absence.date_debut)} de ${heureDebut} à ${heureFin}`
+  }
+  if (memeJour && heureDebut) {
+    return `Le ${formatShortDate(absence.date_debut)} à partir de ${heureDebut}`
+  }
+
+  const fin = heureFin ? `${formatShortDate(absence.date_fin)} à ${heureFin}` : formatShortDate(absence.date_fin)
+  return `Du ${debut} au ${fin}`
+}
+
 /** Horodatage à enregistrer : la date choisie, à l'heure donnée (ou l'heure actuelle). */
 export function horodatage(date: string, hhmm?: string): string {
   const [h, m] = (hhmm ?? new Date().toTimeString().slice(0, 5)).split(':').map(Number)

@@ -137,12 +137,17 @@ export type Crise = {
 /** Période où le propriétaire était absent : aucun symptôme n'a pu être
  * observé pendant ce temps, à distinguer d'une période réellement calme
  * dans le journal, les graphiques et le dossier vétérinaire. Même forme que
- * Crise : date_fin nulle tant que l'absence est en cours. */
+ * Crise : date_fin nulle tant que l'absence est en cours. heure_debut et
+ * heure_fin affinent le créneau dans les journées de bord — une absence
+ * dépasse rarement 24h/24 — et restent nulles pour une absence à la
+ * journée (week-end, voyage). */
 export type Absence = {
   id: string
   dog_id: string
   date_debut: string
   date_fin: string | null
+  heure_debut: string | null
+  heure_fin: string | null
   note: string | null
 }
 

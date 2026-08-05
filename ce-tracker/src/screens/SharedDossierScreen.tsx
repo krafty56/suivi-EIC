@@ -10,7 +10,15 @@ import {
   GRAVITE_OPTIONS,
 } from '../data/catalogs'
 import { TOUS_LES_ITEMS } from '../data/scores'
-import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO, veilleDe } from '../lib/date'
+import {
+  calculerAge,
+  formatLongDate,
+  formatPlageAbsence,
+  formatShortDate,
+  formatTime,
+  todayISO,
+  veilleDe,
+} from '../lib/date'
 import { estActiveLe, joursDeLEpisode } from '../lib/journal'
 import { Button, Card, Sheet, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
@@ -347,9 +355,7 @@ function Journee({
       {absencesDebut.map((absence) => (
         <div key={absence.id} className="mt-1 rounded-lg bg-slate-100 px-2 py-1.5">
           <p className="text-sm font-bold text-slate-700">Absence signalée</p>
-          <p className="text-xs font-medium text-slate-500">
-            {absence.date_fin ? `Jusqu’au ${formatShortDate(absence.date_fin)}` : 'En cours'}
-          </p>
+          <p className="text-xs font-medium text-slate-500">{formatPlageAbsence(absence)}</p>
           {absence.note && <p className="text-sm text-slate-700">{absence.note}</p>}
         </div>
       ))}
