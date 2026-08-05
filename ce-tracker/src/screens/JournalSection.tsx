@@ -547,6 +547,30 @@ function AjoutSheet({
         <div className="space-y-5">
           <div>
             <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+              Personnalisé
+            </p>
+            <div className="space-y-1.5">
+              {entreesPerso.map((c) => (
+                <Ligne
+                  key={c.id}
+                  nom={c.nom}
+                  emoji={c.emoji}
+                  etoile
+                  onClick={() => setChoisi(entreeVersRaccourci(c))}
+                />
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full py-2.5 text-sm"
+                onClick={() => setCreation(true)}
+              >
+                + Entrée personnalisée
+              </Button>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
               Autres entrées
             </p>
             <div className="space-y-1.5">
@@ -584,30 +608,6 @@ function AjoutSheet({
               </div>
             </div>
           ))}
-          <div>
-            <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-              Personnalisé
-            </p>
-            <div className="space-y-1.5">
-              {entreesPerso.map((c) => (
-                <Ligne
-                  key={c.id}
-                  nom={c.nom}
-                  emoji={c.emoji}
-                  etoile
-                  onClick={() => setChoisi(entreeVersRaccourci(c))}
-                />
-              ))}
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full py-2.5 text-sm"
-                onClick={() => setCreation(true)}
-              >
-                + Entrée personnalisée
-              </Button>
-            </div>
-          </div>
         </div>
       </Sheet>
     )
