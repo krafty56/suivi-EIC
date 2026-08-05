@@ -231,7 +231,9 @@ export default function App() {
             </Suspense>
           )}
           {tab === 'labs' && <LabHubScreen dogId={dog.id} />}
-          {tab === 'agenda' && <AgendaScreen dogId={dog.id} onPreparer={setFichePrep} />}
+          {tab === 'agenda' && (
+            <AgendaScreen dogId={dog.id} dogName={dog.name} onPreparer={setFichePrep} />
+          )}
           {tab === 'dog' && <DogHubScreen dog={dog} ownerId={session.user.id} onSaved={setDog} />}
         </main>
 

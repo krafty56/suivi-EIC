@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Appointment } from '../lib/types'
 import { formatLongDate, formatTime, todayISO } from '../lib/date'
+import { icsRendezVous, telechargerIcs, urlGoogleCalendar } from '../lib/calendrier'
 import { usePremium } from '../lib/premium'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
-type Props = { dogId: string; onPreparer: (appointment: Appointment) => void }
+type Props = { dogId: string; dogName: string; onPreparer: (appointment: Appointment) => void }
 
 const SUGGESTIONS_MOTIF = [
   'Consultation de contrôle',
@@ -23,7 +24,7 @@ const ONGLETS_REPERES = [
 
 type OngletRepere = (typeof ONGLETS_REPERES)[number]['id']
 
-export default function AgendaScreen({ dogId, onPreparer }: Props) {
+export default function AgendaScreen({ dogId, dogName, onPreparer }: Props) {
   const { isPremium } = usePremium()
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
@@ -31,6 +32,7 @@ export default function AgendaScreen({ dogId, onPreparer }: Props) {
   const [informationsOuvertes, setInformationsOuvertes] = useState(false)
   const [ongletRepere, setOngletRepere] = useState<OngletRepere>('grele_colon')
   const [verrouOuvert, setVerrouOuvert] = useState(false)
+  const [calendrierPour, setCalendrierPour] = useState<Appointment | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function preparer(r: Appointment) {
@@ -268,6 +270,7 @@ export default function AgendaScreen({ dogId, onPreparer }: Props) {
                 onEdit={() => setAjout(r)}
                 onDelete={() => void supprimer(r.id)}
                 onPreparer={() => preparer(r)}
+                onCalendrier={() => setCalendrierPour(r)}
               />
             ))}
           </div>
@@ -306,6 +309,37 @@ export default function AgendaScreen({ dogId, onPreparer }: Props) {
             titre="Préparation du rendez-vous"
             description="Une fiche de synthèse (crises, traitement, poids, laboratoire depuis le dernier rendez-vous) prête à emporter ou imprimer — réservée au premium."
           />
+        </Sheet>
+      )}
+
+      {calendrierPour && (
+        <Sheet title="📆 Ajouter au calendrier" onClose={() => setCalendrierPour(null)}>
+          <div className="space-y-3">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => {
+                window.open(urlGoogleCalendar({ name: dogName }, calendrierPour), '_blank', 'noopener,noreferrer')
+                setCalendrierPour(null)
+              }}
+            >
+              Google Calendar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                telechargerIcs(
+                  `rdv-${calendrierPour.date}.ics`,
+                  icsRendezVous({ name: dogName }, calendrierPour),
+                )
+                setCalendrierPour(null)
+              }}
+            >
+              Apple Calendrier / Outlook (.ics)
+            </Button>
+          </div>
         </Sheet>
       )}
     </div>
@@ -359,12 +393,14 @@ function LigneRendezVous({
   onEdit,
   onDelete,
   onPreparer,
+  onCalendrier,
 }: {
   r: Appointment
   isPremium?: boolean
   onEdit: () => void
   onDelete: () => void
   onPreparer?: () => void
+  onCalendrier?: () => void
 }) {
   return (
     <Card className="p-0">
@@ -396,14 +432,27 @@ function LigneRendezVous({
           &times;
         </button>
       </div>
-      {onPreparer && (
-        <button
-          type="button"
-          onClick={onPreparer}
-          className="block w-full border-t border-slate-100 px-4 py-2 text-left text-sm font-medium text-brand-700 hover:bg-brand-50"
-        >
-          {isPremium ? '🩺 Préparer ce rendez-vous' : '🔒 Préparer ce rendez-vous'}
-        </button>
+      {(onCalendrier || onPreparer) && (
+        <div className="flex divide-x divide-slate-100 border-t border-slate-100">
+          {onCalendrier && (
+            <button
+              type="button"
+              onClick={onCalendrier}
+              className="flex-1 px-4 py-2 text-center text-sm font-medium text-brand-700 hover:bg-brand-50"
+            >
+              📆 Calendrier
+            </button>
+          )}
+          {onPreparer && (
+            <button
+              type="button"
+              onClick={onPreparer}
+              className="flex-1 px-4 py-2 text-center text-sm font-medium text-brand-700 hover:bg-brand-50"
+            >
+              {isPremium ? '🩺 Préparer' : '🔒 Préparer'}
+            </button>
+          )}
+        </div>
       )}
     </Card>
   )
