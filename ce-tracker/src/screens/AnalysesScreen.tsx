@@ -653,7 +653,7 @@ export default function AnalysesScreen({ dogId }: Props) {
                 Pas encore assez de recul pour comparer un traitement (au moins 3 jours depuis
                 son début, avec des données saisies avant et après).
               </p>
-            ) : traitementsAffiches !== null && traitementsAffiches.length === 0 ? (
+            ) : medicamentsChoisis !== null && medicamentsChoisis.length === 0 ? (
               <p className="py-4 text-center text-sm text-slate-500">
                 Aucun traitement sélectionné —{' '}
                 <button
@@ -665,6 +665,22 @@ export default function AnalysesScreen({ dogId }: Props) {
                   className="font-medium text-brand-700 underline"
                 >
                   en choisir
+                </button>
+                .
+              </p>
+            ) : traitementsAffiches !== null && traitementsAffiches.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-500">
+                Le traitement sélectionné n'a pas encore assez de recul pour être comparé (au
+                moins 3 jours depuis son début) —{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setChoixTraitementsOuvert(true)
+                  }}
+                  className="font-medium text-brand-700 underline"
+                >
+                  changer la sélection
                 </button>
                 .
               </p>
