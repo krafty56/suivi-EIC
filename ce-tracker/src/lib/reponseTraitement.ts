@@ -10,8 +10,12 @@ export type StatsFenetre = {
 }
 
 export type ComparaisonTraitement = {
-  medicationId: string
   nom: string
+  /** Un même médicament pris matin et soir donne deux lignes dans
+   * dog_medications (une par heure de prise) : elles sont regroupées ici
+   * sous un seul traitement, le propriétaire raisonnant en « je prends X »,
+   * pas en créneaux horaires. */
+  medicationIds: string[]
   dateDebut: string
   avant: StatsFenetre
   apres: StatsFenetre
@@ -78,7 +82,11 @@ export function statsFenetre(
  * sur une fenêtre symétrique de 14 jours. dog_medications n'a pas de date
  * propre : le début est déduit du premier événement de type traitement lié
  * au médicament. Un traitement commencé depuis moins de 3 jours est écarté,
- * la fenêtre « après » serait trop courte pour être lisible. */
+ * la fenêtre « après » serait trop courte pour être lisible.
+ *
+ * Les lignes dog_medications sont d'abord regroupées par nom : une prise
+ * matin et soir du même médicament ne doit produire qu'une seule
+ * comparaison, pas deux quasi identiques. */
 export function comparerTraitements(
   medications: DogMedication[],
   traitementEvents: SuiviEvent[],
@@ -89,8 +97,15 @@ export function comparerTraitements(
 ): ComparaisonTraitement[] {
   const resultats: ComparaisonTraitement[] = []
 
+  const groupes = new Map<string, string[]>()
   for (const med of medications) {
-    const evenementsMed = traitementEvents.filter((e) => e.dog_medication_id === med.id)
+    groupes.set(med.nom_medicament, [...(groupes.get(med.nom_medicament) ?? []), med.id])
+  }
+
+  for (const [nom, medicationIds] of groupes) {
+    const evenementsMed = traitementEvents.filter(
+      (e) => e.dog_medication_id !== null && medicationIds.includes(e.dog_medication_id),
+    )
     if (evenementsMed.length === 0) continue
     const dateDebut = evenementsMed.map((e) => jourDe(e.at)).sort()[0]
 
@@ -116,7 +131,7 @@ export function comparerTraitements(
     )
     if (avant.joursCouverts === 0 && apres.joursCouverts === 0) continue
 
-    resultats.push({ medicationId: med.id, nom: med.nom_medicament, dateDebut, avant, apres })
+    resultats.push({ nom, medicationIds, dateDebut, avant, apres })
   }
 
   return resultats

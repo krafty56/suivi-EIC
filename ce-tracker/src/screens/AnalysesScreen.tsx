@@ -147,9 +147,18 @@ export default function AnalysesScreen({ dogId }: Props) {
     () =>
       traitements === null || medicamentsChoisis === null
         ? traitements
-        : traitements.filter((t) => medicamentsChoisis.includes(t.medicationId)),
+        : traitements.filter((t) => t.medicationIds.some((id) => medicamentsChoisis.includes(id))),
     [traitements, medicamentsChoisis],
   )
+
+  // Une prise matin et soir du même médicament donne deux lignes
+  // dog_medications : le sélecteur ne doit en montrer qu'une, cochée/décochée
+  // pour l'ensemble des créneaux du médicament plutôt que par ligne.
+  const groupesMedicaments = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const m of medicamentsActifs) map.set(m.nom_medicament, [...(map.get(m.nom_medicament) ?? []), m.id])
+    return [...map.entries()].map(([nom, ids]) => ({ nom, ids }))
+  }, [medicamentsActifs])
 
   useEffect(() => {
     try {
@@ -671,7 +680,7 @@ export default function AnalysesScreen({ dogId }: Props) {
             ) : (
               <div className="space-y-4">
                 {(traitementsAffiches ?? traitements).map((t) => (
-                  <div key={t.medicationId} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
+                  <div key={t.nom} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
                     <p className="text-sm font-semibold text-slate-800">{t.nom}</p>
                     <p className="mb-2 text-xs text-slate-500">Depuis le {formatShortDate(t.dateDebut)}</p>
                     <div className="grid grid-cols-3 gap-y-1 gap-x-2 text-xs">
@@ -728,11 +737,11 @@ export default function AnalysesScreen({ dogId }: Props) {
             en compte par défaut, y compris ceux trop récents pour avoir déjà des chiffres.
           </p>
           <div className="space-y-1.5">
-            {medicamentsActifs.map((m) => {
-              const coche = medicamentsChoisis === null || medicamentsChoisis.includes(m.id)
+            {groupesMedicaments.map((groupe) => {
+              const coche = medicamentsChoisis === null || groupe.ids.some((id) => medicamentsChoisis.includes(id))
               return (
                 <label
-                  key={m.id}
+                  key={groupe.nom}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
                     coche ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
                   }`}
@@ -744,14 +753,15 @@ export default function AnalysesScreen({ dogId }: Props) {
                       setMedicamentsChoisis((current) => {
                         const tousLesIds = medicamentsActifs.map((med) => med.id)
                         const base = current ?? tousLesIds
-                        return base.includes(m.id)
-                          ? base.filter((id) => id !== m.id)
-                          : [...base, m.id]
+                        const dejaCoche = groupe.ids.some((id) => base.includes(id))
+                        return dejaCoche
+                          ? base.filter((id) => !groupe.ids.includes(id))
+                          : [...base, ...groupe.ids.filter((id) => !base.includes(id))]
                       })
                     }
                     className="h-4 w-4 shrink-0 accent-brand-700"
                   />
-                  <span className="flex-1 text-sm text-slate-800">{m.nom_medicament}</span>
+                  <span className="flex-1 text-sm text-slate-800">{groupe.nom}</span>
                 </label>
               )
             })}
