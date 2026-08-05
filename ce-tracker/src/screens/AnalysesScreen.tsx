@@ -17,7 +17,7 @@ import type { Absence, Crise, DailyEntry, DogMedication, FoodEntry, SuiviEvent }
 import { formatShortDate, todayISO } from '../lib/date'
 import { usePremium } from '../lib/premium'
 import { comparerTraitements, type ComparaisonTraitement } from '../lib/reponseTraitement'
-import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
+import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
 type Props = { dogId: string }
@@ -65,6 +65,25 @@ function chargerPeriode(): { presetActif: number | null; debut: string; fin: str
   return { presetActif: 30, debut: reculerDe(todayISO(), 29), fin: todayISO() }
 }
 
+// Par défaut tous les traitements actifs entrent dans la comparaison ; ce
+// choix reste propre à chaque chien plutôt que global comme la période, un
+// second chien du même compte n'ayant aucune raison d'hériter de la
+// sélection du premier.
+function cleChoixTraitements(dogId: string): string {
+  return `appeic.analyses.traitements.${dogId}`
+}
+
+/** null = pas encore personnalisé, donc tous les traitements comptent. */
+function chargerChoixTraitements(dogId: string): string[] | null {
+  try {
+    const brut = localStorage.getItem(cleChoixTraitements(dogId))
+    const donnees = brut ? JSON.parse(brut) : null
+    return Array.isArray(donnees) ? donnees.filter((v): v is string => typeof v === 'string') : null
+  } catch {
+    return null
+  }
+}
+
 /** Tous les jours entre deux dates incluses, y compris ceux sans donnée :
  * les creux restent visibles plutôt que d'être passés sous silence. */
 function joursEntre(debut: string, fin: string): Jour[] {
@@ -105,6 +124,27 @@ export default function AnalysesScreen({ dogId }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [traitements, setTraitements] = useState<ComparaisonTraitement[] | null>(null)
   const [verrouTraitementsOuvert, setVerrouTraitementsOuvert] = useState(false)
+  const [medicamentsChoisis, setMedicamentsChoisis] = useState<string[] | null>(() =>
+    chargerChoixTraitements(dogId),
+  )
+  const [choixTraitementsOuvert, setChoixTraitementsOuvert] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (medicamentsChoisis === null) localStorage.removeItem(cleChoixTraitements(dogId))
+      else localStorage.setItem(cleChoixTraitements(dogId), JSON.stringify(medicamentsChoisis))
+    } catch {
+      // Navigation privée ou quota plein : la sélection ne persiste pas, sans bloquer l'app.
+    }
+  }, [dogId, medicamentsChoisis])
+
+  const traitementsAffiches = useMemo(
+    () =>
+      traitements === null || medicamentsChoisis === null
+        ? traitements
+        : traitements.filter((t) => medicamentsChoisis.includes(t.medicationId)),
+    [traitements, medicamentsChoisis],
+  )
 
   useEffect(() => {
     try {
@@ -578,9 +618,23 @@ export default function AnalysesScreen({ dogId }: Props) {
             className={!isPremium ? 'opacity-60' : ''}
             onClick={() => !isPremium && setVerrouTraitementsOuvert(true)}
           >
-            <p className="mb-2 text-sm font-medium text-slate-700">
-              {isPremium ? 'Réponse aux traitements' : '🔒 Réponse aux traitements'}
-            </p>
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-sm font-medium text-slate-700">
+                {isPremium ? 'Réponse aux traitements' : '🔒 Réponse aux traitements'}
+              </p>
+              {isPremium && traitements !== null && traitements.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setChoixTraitementsOuvert(true)
+                  }}
+                  className="text-xs font-medium text-brand-700 underline"
+                >
+                  Choisir
+                </button>
+              )}
+            </div>
             {!isPremium ? (
               <p className="text-sm text-slate-500">
                 Compare automatiquement l'état du chien avant et après le début de chaque
@@ -593,9 +647,24 @@ export default function AnalysesScreen({ dogId }: Props) {
                 Pas encore assez de recul pour comparer un traitement (au moins 3 jours depuis
                 son début, avec des données saisies avant et après).
               </p>
+            ) : traitementsAffiches !== null && traitementsAffiches.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-500">
+                Aucun traitement sélectionné —{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setChoixTraitementsOuvert(true)
+                  }}
+                  className="font-medium text-brand-700 underline"
+                >
+                  en choisir
+                </button>
+                .
+              </p>
             ) : (
               <div className="space-y-4">
-                {traitements.map((t) => (
+                {(traitementsAffiches ?? traitements).map((t) => (
                   <div key={t.medicationId} className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
                     <p className="text-sm font-semibold text-slate-800">{t.nom}</p>
                     <p className="mb-2 text-xs text-slate-500">Depuis le {formatShortDate(t.dateDebut)}</p>
@@ -643,6 +712,54 @@ export default function AnalysesScreen({ dogId }: Props) {
             titre="Réponse aux traitements"
             description="Compare automatiquement le score fécal, les crises et les vomissements avant et après le début de chaque traitement actif, pour visualiser son effet réel."
           />
+        </Sheet>
+      )}
+
+      {choixTraitementsOuvert && traitements !== null && (
+        <Sheet title="Traitements à comparer" onClose={() => setChoixTraitementsOuvert(false)}>
+          <p className="mb-4 text-sm text-slate-600">
+            Choisissez les traitements à inclure dans la comparaison avant/après. Tous sont pris
+            en compte par défaut.
+          </p>
+          <div className="space-y-1.5">
+            {traitements.map((t) => {
+              const coche = medicamentsChoisis === null || medicamentsChoisis.includes(t.medicationId)
+              return (
+                <label
+                  key={t.medicationId}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
+                    coche ? 'bg-brand-50 ring-brand-200' : 'bg-white ring-slate-200'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={coche}
+                    onChange={() =>
+                      setMedicamentsChoisis((current) => {
+                        const tousLesIds = traitements.map((tr) => tr.medicationId)
+                        const base = current ?? tousLesIds
+                        return base.includes(t.medicationId)
+                          ? base.filter((id) => id !== t.medicationId)
+                          : [...base, t.medicationId]
+                      })
+                    }
+                    className="h-4 w-4 shrink-0 accent-brand-700"
+                  />
+                  <span className="flex-1 text-sm text-slate-800">{t.nom}</span>
+                </label>
+              )
+            })}
+          </div>
+          {medicamentsChoisis !== null && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-3 w-full py-2.5 text-sm"
+              onClick={() => setMedicamentsChoisis(null)}
+            >
+              Tout sélectionner
+            </Button>
+          )}
         </Sheet>
       )}
     </div>
