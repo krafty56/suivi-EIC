@@ -59,8 +59,11 @@ export function texteLigne(
   const resume = resumeDetailsEvenement(event.type, event.details)
   const delai = event.type === 'symptome' ? delaiRepas(event.at, repas) : null
   const sousParts = [event.categorie, resume, delai].filter((v): v is string => Boolean(v))
+  // Une entrée personnalisée n'a pas d'emoji dans la table statique : celui
+  // choisi à la création voyage avec l'événement, dans ses détails.
+  const emojiPersonnalise = event.details.emoji
   return {
-    emoji: emojiEvenement(event.type, event.nom),
+    emoji: typeof emojiPersonnalise === 'string' ? emojiPersonnalise : emojiEvenement(event.type, event.nom),
     titre: `${event.nom}${event.intensite !== null ? ` (${event.intensite})` : ''}`,
     sousTitre: sousParts.length > 0 ? sousParts.join(' · ') : null,
     heure: heureDe(event.at),

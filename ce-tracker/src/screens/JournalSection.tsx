@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Appetit, Dog, QuantiteRepas, Raccourci, SuiviEvent } from '../lib/types'
+import type { Appetit, CustomEntry, Dog, QuantiteRepas, Raccourci, SuiviEvent } from '../lib/types'
 import { CATALOGUE_SYMPTOMES, COTATIONS, COTATIONS_SPECIFIQUES, TOUS_LES_SYMPTOMES } from '../data/symptomes'
 import {
   APPETIT_OPTIONS,
@@ -34,6 +34,21 @@ const CHOIX_POSSIBLES: Raccourci[] = [
   })),
 ]
 
+const CATEGORIE_PERSONNALISEE = 'Personnalisé'
+
+/** Une entrée personnalisée se comporte comme un symptôme partout où elle
+ * apparaît (choix, saisie rapide, journal) : seule sa provenance diffère. */
+function entreeVersRaccourci(entree: CustomEntry): Raccourci {
+  return {
+    type: 'symptome',
+    nom: entree.nom,
+    categorie: CATEGORIE_PERSONNALISEE,
+    echelle: entree.echelle,
+    emoji: entree.emoji,
+    personnalise: true,
+  }
+}
+
 type Ajout =
   | { mode: 'nouveau'; depart: Raccourci | null }
   | { mode: 'edition'; evenement: SuiviEvent }
@@ -62,6 +77,21 @@ export default function JournalSection({
   const [config, setConfig] = useState(false)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Propre à ce chien (donc à son propriétaire) : jamais partagée avec le
+  // reste de l'app, à l'inverse du catalogue de symptômes prédéfini.
+  const [entreesPerso, setEntreesPerso] = useState<CustomEntry[]>([])
+
+  useEffect(() => {
+    supabase
+      .from('custom_entries')
+      .select('*')
+      .eq('dog_id', dog.id)
+      .order('created_at', { ascending: true })
+      .then(({ data, error: dbError }) => {
+        if (dbError) setError(dbError.message)
+        else setEntreesPerso(data as CustomEntry[])
+      })
+  }, [dog.id])
 
   const load = useCallback(async () => {
     const debut = new Date(`${date}T00:00:00`)
@@ -160,7 +190,7 @@ export default function JournalSection({
                 onClick={() => setAjout({ mode: 'nouveau', depart: r })}
                 className="relative rounded-2xl bg-white px-3 py-5 text-center shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-brand-50"
               >
-                <span className="block text-2xl">{emojiEvenement(r.type, r.nom)}</span>
+                <span className="block text-2xl">{r.emoji ?? emojiEvenement(r.type, r.nom)}</span>
                 <span className="mt-1 block text-sm font-semibold text-slate-900">{r.nom}</span>
                 <span className="mt-0.5 block text-xs text-slate-500">Appui puis validation</span>
                 {compte(r) > 0 && (
@@ -200,7 +230,9 @@ export default function JournalSection({
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-1 px-2 py-1">
                   <span className="shrink-0 pl-1 text-xl" aria-hidden="true">
-                    {emojiEvenement(event.type, event.nom)}
+                    {typeof event.details.emoji === 'string'
+                      ? event.details.emoji
+                      : emojiEvenement(event.type, event.nom)}
                   </span>
                   <button
                     type="button"
@@ -270,6 +302,8 @@ export default function JournalSection({
           init={ajout}
           date={date}
           dogId={dog.id}
+          entreesPerso={entreesPerso}
+          onEntreePersonnaliseeCreee={(e) => setEntreesPerso((prev) => [...prev, e])}
           onClose={() => setAjout(null)}
           onSave={(payload) => {
             setAjout(null)
@@ -287,6 +321,7 @@ export default function JournalSection({
       {config && (
         <ConfigSheet
           dog={dog}
+          entreesPerso={entreesPerso}
           onClose={() => setConfig(false)}
           onSaved={(d) => {
             setConfig(false)
@@ -304,12 +339,16 @@ function AjoutSheet({
   init,
   date,
   dogId,
+  entreesPerso,
+  onEntreePersonnaliseeCreee,
   onClose,
   onSave,
 }: {
   init: Ajout
   date: string
   dogId: string
+  entreesPerso: CustomEntry[]
+  onEntreePersonnaliseeCreee: (entree: CustomEntry) => void
   onClose: () => void
   onSave: (payload: {
     id?: string
@@ -340,6 +379,33 @@ function AjoutSheet({
     evenement ? datetimeLocalDe(evenement.at) : datetimeLocalDe(horodatage(date)),
   )
   const [note, setNote] = useState(evenement?.note ?? '')
+
+  // Sous-formulaire de création d'une entrée personnalisée, ouvert depuis le
+  // choix "+ Entrée personnalisée" quand aucune entrée n'est encore choisie.
+  const [creation, setCreation] = useState(false)
+  const [nomPerso, setNomPerso] = useState('')
+  const [emojiPerso, setEmojiPerso] = useState('')
+  const [busyPerso, setBusyPerso] = useState(false)
+  const [erreurPerso, setErreurPerso] = useState<string | null>(null)
+
+  async function creerEntreePersonnalisee() {
+    setBusyPerso(true)
+    setErreurPerso(null)
+    const { data, error: dbError } = await supabase
+      .from('custom_entries')
+      .insert({ dog_id: dogId, nom: nomPerso.trim(), emoji: emojiPerso.trim(), echelle: false })
+      .select()
+      .single()
+    setBusyPerso(false)
+    if (dbError) {
+      setErreurPerso(dbError.message)
+      return
+    }
+    const nouvelleEntree = data as CustomEntry
+    onEntreePersonnaliseeCreee(nouvelleEntree)
+    setCreation(false)
+    setChoisi(entreeVersRaccourci(nouvelleEntree))
+  }
 
   // Taille, couleur et signes ponctuels n'ont de sens que pour une selle ;
   // ils vivent dans events.details plutôt que dans des colonnes dédiées.
@@ -417,7 +483,7 @@ function AjoutSheet({
               ...(appetitRepas ? { appetite: appetitRepas } : {}),
               ...(quantiteRepas ? { quantite: quantiteRepas } : {}),
             }
-          : (evenement?.details ?? {})
+          : { ...(evenement?.details ?? {}), ...(choisi.emoji ? { emoji: choisi.emoji } : {}) }
 
     onSave({
       id: evenement?.id,
@@ -431,6 +497,51 @@ function AjoutSheet({
   }
 
   if (!choisi) {
+    if (creation) {
+      return (
+        <Sheet title="⭐ Entrée personnalisée" onClose={() => setCreation(false)}>
+          <div className="space-y-5">
+            <Field label="Nom">
+              <input
+                type="text"
+                value={nomPerso}
+                onChange={(e) => setNomPerso(e.target.value)}
+                placeholder="Ex. Toux"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Émoji">
+              <input
+                type="text"
+                value={emojiPerso}
+                onChange={(e) => setEmojiPerso(e.target.value)}
+                placeholder="Ex. 🤧"
+                maxLength={4}
+                className={inputClass}
+              />
+            </Field>
+            <ErrorMessage>{erreurPerso}</ErrorMessage>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={!nomPerso.trim() || !emojiPerso.trim() || busyPerso}
+              onClick={() => void creerEntreePersonnalisee()}
+            >
+              {busyPerso ? 'Création…' : 'Créer et enregistrer'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full py-2.5 text-sm"
+              onClick={() => setCreation(false)}
+            >
+              Annuler
+            </Button>
+          </div>
+        </Sheet>
+      )
+    }
+
     return (
       <Sheet title="Ajouter une entrée" onClose={onClose}>
         <div className="space-y-5">
@@ -473,6 +584,30 @@ function AjoutSheet({
               </div>
             </div>
           ))}
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+              Personnalisé
+            </p>
+            <div className="space-y-1.5">
+              {entreesPerso.map((c) => (
+                <Ligne
+                  key={c.id}
+                  nom={c.nom}
+                  emoji={c.emoji}
+                  etoile
+                  onClick={() => setChoisi(entreeVersRaccourci(c))}
+                />
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full py-2.5 text-sm"
+                onClick={() => setCreation(true)}
+              >
+                + Entrée personnalisée
+              </Button>
+            </div>
+          </div>
         </div>
       </Sheet>
     )
@@ -483,7 +618,10 @@ function AjoutSheet({
   const cotationPersonnalisee = choisi.nom in COTATIONS_SPECIFIQUES
 
   return (
-    <Sheet title={`${emojiEvenement(choisi.type, choisi.nom)} ${choisi.nom}`} onClose={onClose}>
+    <Sheet
+      title={`${choisi.emoji ?? emojiEvenement(choisi.type, choisi.nom)} ${choisi.nom}`}
+      onClose={onClose}
+    >
       <div className="space-y-5">
         {choisi.echelle && (
           <div>
@@ -713,7 +851,18 @@ function AjoutSheet({
   )
 }
 
-function Ligne({ nom, emoji, onClick }: { nom: string; emoji?: string; onClick: () => void }) {
+function Ligne({
+  nom,
+  emoji,
+  etoile,
+  onClick,
+}: {
+  nom: string
+  emoji?: string
+  /** Marque une entrée personnalisée, pour la distinguer du catalogue prédéfini. */
+  etoile?: boolean
+  onClick: () => void
+}) {
   return (
     <button
       type="button"
@@ -725,7 +874,12 @@ function Ligne({ nom, emoji, onClick }: { nom: string; emoji?: string; onClick: 
           {emoji}
         </span>
       )}
-      {nom}
+      <span className="flex-1">{nom}</span>
+      {etoile && (
+        <span aria-hidden="true" title="Entrée personnalisée" className="text-sm text-amber-500">
+          ⭐
+        </span>
+      )}
     </button>
   )
 }
@@ -733,16 +887,19 @@ function Ligne({ nom, emoji, onClick }: { nom: string; emoji?: string; onClick: 
 /** Choix des deux raccourcis de l'écran d'accueil. */
 function ConfigSheet({
   dog,
+  entreesPerso,
   onClose,
   onSaved,
 }: {
   dog: Dog
+  entreesPerso: CustomEntry[]
   onClose: () => void
   onSaved: (dog: Dog) => void
 }) {
   const [choix, setChoix] = useState<Raccourci[]>(dog.saisie_rapide ?? [])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const tousLesChoix: Raccourci[] = [...CHOIX_POSSIBLES, ...entreesPerso.map(entreeVersRaccourci)]
 
   const estChoisi = (r: Raccourci) => choix.some((c) => c.type === r.type && c.nom === r.nom)
 
@@ -775,7 +932,7 @@ function ConfigSheet({
       </p>
 
       <div className="space-y-1.5">
-        {CHOIX_POSSIBLES.map((r) => (
+        {tousLesChoix.map((r) => (
           <label
             key={`${r.type}-${r.nom}`}
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors ${
@@ -788,9 +945,16 @@ function ConfigSheet({
               onChange={() => basculer(r)}
               className="h-4 w-4 shrink-0 accent-brand-700"
             />
-            <span aria-hidden="true">{emojiEvenement(r.type, r.nom)}</span>
+            <span aria-hidden="true">{r.emoji ?? emojiEvenement(r.type, r.nom)}</span>
             <span className="flex-1 text-sm text-slate-800">{r.nom}</span>
-            {r.categorie && <span className="text-xs text-slate-500">{r.categorie}</span>}
+            {r.personnalise && (
+              <span aria-hidden="true" title="Entrée personnalisée" className="text-sm text-amber-500">
+                ⭐
+              </span>
+            )}
+            {r.categorie && r.categorie !== CATEGORIE_PERSONNALISEE && (
+              <span className="text-xs text-slate-500">{r.categorie}</span>
+            )}
           </label>
         ))}
       </div>

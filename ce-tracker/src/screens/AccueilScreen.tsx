@@ -382,7 +382,9 @@ export default function AccueilScreen({ dog }: Props) {
               {events.map((event) => (
                 <li key={event.id} className="flex items-center gap-2 px-4 py-3">
                   <span className="shrink-0 text-xl" aria-hidden="true">
-                    {emojiEvenement(event.type, event.nom)}
+                    {typeof event.details.emoji === 'string'
+                      ? event.details.emoji
+                      : emojiEvenement(event.type, event.nom)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-slate-900">{event.nom}</span>

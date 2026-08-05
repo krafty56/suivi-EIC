@@ -46,6 +46,25 @@ export type Raccourci = {
   nom: string
   categorie: string | null
   echelle: boolean
+  /** Renseigné pour une entrée personnalisée : son emoji ne vit dans aucune
+   * table statique, il voyage donc avec le raccourci lui-même — y compris
+   * une fois enregistré dans dogs.saisie_rapide. */
+  emoji?: string
+  /** true pour une entrée créée par le propriétaire (table custom_entries),
+   * jamais pour le catalogue prédéfini : distingue les deux à l'affichage
+   * (étoile) sans devoir recroiser les listes. */
+  personnalise?: boolean
+}
+
+/** Entrée de suivi créée par le propriétaire lui-même, propre à son chien —
+ * jamais partagée avec le reste de l'app, à l'inverse du catalogue de
+ * symptômes prédéfini qui vit dans le code. */
+export type CustomEntry = {
+  id: string
+  dog_id: string
+  nom: string
+  emoji: string
+  echelle: boolean
 }
 
 export type Dog = {
