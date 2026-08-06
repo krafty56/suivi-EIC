@@ -19,15 +19,15 @@ type Vue =
   | 'partage'
   | 'notifications'
 
-const VUES: { id: Vue; label: string }[] = [
-  { id: 'fiche', label: 'Fiche' },
-  { id: 'poids', label: 'Poids' },
-  { id: 'alimentation', label: 'Alimentation' },
-  { id: 'medicaments', label: 'Médicaments' },
-  { id: 'carnet_sante', label: 'Carnet de santé' },
-  { id: 'veterinaires', label: 'Mes vétos' },
-  { id: 'partage', label: 'Partage' },
-  { id: 'notifications', label: 'Rappels' },
+const VUES: { id: Vue; label: string; emoji: string }[] = [
+  { id: 'fiche', label: 'Fiche', emoji: '🐶' },
+  { id: 'poids', label: 'Poids', emoji: '⚖️' },
+  { id: 'alimentation', label: 'Alimentation', emoji: '🍽️' },
+  { id: 'medicaments', label: 'Médicaments', emoji: '💊' },
+  { id: 'carnet_sante', label: 'Carnet de santé', emoji: '📖' },
+  { id: 'veterinaires', label: 'Mes vétos', emoji: '🩺' },
+  { id: 'partage', label: 'Partage', emoji: '🔗' },
+  { id: 'notifications', label: 'Rappels', emoji: '🔔' },
 ]
 
 type Props = {
@@ -47,20 +47,21 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 px-4 pt-4 pb-1">
+      <div className="grid grid-cols-4 gap-2 px-4 pt-4 pb-1">
         {VUES.map((item) => (
           <button
             key={item.id}
             type="button"
             aria-pressed={vue === item.id}
             onClick={() => setVue(item.id)}
-            className={`rounded-xl px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`rounded-2xl px-2 py-4 text-center text-xs font-semibold transition-colors ${
               vue === item.id
-                ? 'bg-brand-700 text-white'
-                : 'bg-white text-slate-700 ring-1 ring-slate-200'
+                ? 'bg-brand-700 text-white ring-1 ring-brand-700'
+                : 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50'
             }`}
           >
-            {item.label}
+            <span className="block text-xl">{item.emoji}</span>
+            <span className="mt-1 block">{item.label}</span>
           </button>
         ))}
       </div>
