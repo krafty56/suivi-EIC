@@ -27,20 +27,37 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// score_ferme et score_mou plutôt qu'un score unique : demander à l'IA de
+// combiner elle-même deux textures en un seul chiffre borné ("monte d'un
+// cran ou deux, pas plus") s'est montré peu fiable en pratique (elle a
+// justifié un bond de 2 à 5 sur une consigne censée le limiter à 3-4). La
+// pondération entre les deux lectures est donc calculée ici, en code,
+// jamais laissée à l'appréciation du modèle.
 const TOOL = {
   name: 'noter_selle',
-  description: "Enregistre le score fécal (échelle de Purina, 1 à 7) lu sur la photo d'une selle de chien.",
+  description:
+    "Enregistre la lecture du score fécal (échelle de Purina, 1 à 7) sur la photo d'une selle de chien, en distinguant la portion la plus ferme et la portion la moins formée si la selle n'est pas uniforme.",
   input_schema: {
     type: 'object',
     properties: {
-      score: {
+      score_ferme: {
         type: ['integer', 'null'],
-        description: '1 à 7 sur l’échelle de Purina, ou null si la photo ne permet pas de juger.',
+        description:
+          'Score 1 à 7 de la portion la plus ferme et la mieux formée visible sur la photo (ou de la selle entière si elle est uniforme). Null si la photo ne permet pas de juger.',
+      },
+      score_mou: {
+        type: ['integer', 'null'],
+        description:
+          "Score 1 à 7 de la portion la moins formée visible sur la photo, uniquement si la texture varie clairement d'un endroit à l'autre de la même selle. Laisse null si la selle est uniforme — ne force jamais une seconde lecture.",
       },
       confiance: { type: 'string', enum: ['haute', 'moyenne', 'faible'] },
-      justification: { type: 'string', description: 'Une phrase courte expliquant le score, en français.' },
+      justification: {
+        type: 'string',
+        description:
+          'Une phrase courte en français, décrivant ce qui a été observé (et les deux textures si score_mou est renseigné).',
+      },
     },
-    required: ['score', 'confiance', 'justification'],
+    required: ['score_ferme', 'confiance', 'justification'],
   },
 }
 
@@ -64,13 +81,15 @@ const SYSTEM_PROMPT = `Tu notes une photo de selle de chien selon l'échelle de 
 
 La distinction 1 vs 2 est la plus souvent manquée : un boudin segmenté mais encore souple et d'un seul tenant est un 2 ; seules des boulettes vraiment séparées les unes des autres, sèches et cassantes, sont un 1.
 
-Une même selle est souvent hétérogène : une base plus ferme et une partie plus molle posée dessus, un début bien formé qui se dégrade sur la longueur, etc. Regarde l'ensemble de la selle visible sur la photo, pas seulement le premier morceau net. Quand la consistance varie sur la même selle, penche vers la portion la moins formée plutôt que vers une moyenne ou la portion majoritaire, mais de façon mesurée : ne monte le score que d'un cran ou deux au-delà de ce que donnerait la portion la plus ferme, sauf si une partie clairement liquide ou totalement sans forme est visible sur une portion notable de la selle — dans ce cas seulement, va jusqu'au score que cette partie justifie réellement. Ne classe une portion comme « molle » que sur des signes visuels nets et sans ambiguïté (affaissement visible, absence de bord net, matière qui s'étale) — pas à partir d'une simple variation de brillance, de couleur ou d'ombre, qui ne change pas la consistance. Ignore tout ce qui n'est pas la matière fécale elle-même (feuilles, brindilles, terre, herbe, ombres du décor) : n'en tiens jamais compte pour juger la texture. Dans un cas hétérogène, la justification doit décrire les deux textures et dire explicitement pourquoi ce score précis a été retenu (ex. « base ferme et segmentée proche d'un 2, extrémité plus molle et moins nette : retenu 3 pour cette portion la moins formée »).
+Une même selle est souvent hétérogène (une base plus ferme, une partie plus molle posée dessus, un début bien formé qui se dégrade sur la longueur). Regarde l'ensemble de la selle visible sur la photo, pas seulement le premier morceau net. Remplis score_ferme avec la portion la mieux formée, et score_mou avec la portion la moins formée SEULEMENT si tu observes un vrai changement de texture ailleurs sur la même selle (affaissement net, bord flou, matière qui s'étale) — pas à partir d'une simple variation de brillance, de couleur ou d'ombre. La combinaison des deux lectures en un score final n'est pas ton rôle : ne les fais pas de tête, contente-toi de rapporter fidèlement ce que tu vois à chaque endroit.
+
+Ignore tout ce qui n'est pas la matière fécale elle-même (feuilles, brindilles, terre, herbe, ombres du décor) : n'en tiens jamais compte pour juger la texture.
 
 Juge uniquement la consistance (forme, tenue, texture), jamais la couleur ni la présence de sang ou de mucus — ce sont d'autres champs de l'app, saisis séparément par le propriétaire.
 
 confiance : "haute" si la photo est nette et sans ambiguïté, "moyenne" si l'angle, la lumière ou l'environnement (herbe, litière) compliquent le jugement, "faible" si tu hésites fortement entre deux scores adjacents.
 
-Si la photo ne montre pas clairement une selle de chien (angle impossible, sujet flou, tout autre chose), renvoie score null et explique pourquoi dans justification plutôt que d'inventer un score.`
+Si la photo ne montre pas clairement une selle de chien (angle impossible, sujet flou, tout autre chose), renvoie score_ferme null et explique pourquoi dans justification plutôt que d'inventer un score.`
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
@@ -120,14 +139,35 @@ Deno.serve(async (req) => {
   }
 
   const aiData = (await aiRes.json()) as {
-    content: { type: string; input?: { score: number | null; confiance: string; justification: string } }[]
+    content: {
+      type: string
+      input?: {
+        score_ferme: number | null
+        score_mou: number | null
+        confiance: string
+        justification: string
+      }
+    }[]
   }
   const toolUse = aiData.content.find((c) => c.type === 'tool_use')
   if (!toolUse?.input) {
     return new Response("Réponse inattendue de l'IA", { status: 502, headers: CORS_HEADERS })
   }
 
-  return new Response(JSON.stringify(toolUse.input), {
+  const { score_ferme, score_mou, confiance, justification } = toolUse.input
+
+  // La portion molle ne tire le score final vers le haut que d'un cran au
+  // maximum, et seulement si elle est réellement plus haute que la portion
+  // ferme : c'est ce plafond, pas l'IA, qui évite un bond disproportionné
+  // (2 → 5 constaté en pratique quand cette pondération lui était confiée).
+  const score =
+    score_ferme === null
+      ? null
+      : score_mou !== null && score_mou > score_ferme
+        ? Math.min(score_mou, score_ferme + 1)
+        : score_ferme
+
+  return new Response(JSON.stringify({ score, confiance, justification }), {
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 })
