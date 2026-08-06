@@ -494,7 +494,12 @@ function AjoutSheet({
       setAnalyseIA(resultat)
       if (resultat.score !== null) setIntensite(resultat.score)
     } catch (err) {
-      setErreurAnalyse(err instanceof Error ? err.message : 'Analyse impossible.')
+      // supabase-js réduit toute réponse d'erreur de la fonction à un message
+      // générique ("Edge Function returned a non-2xx status code") : le
+      // vrai détail est le corps de la réponse, exposé via `context`.
+      const contexte = (err as { context?: Response }).context
+      const detail = contexte ? await contexte.text().catch(() => null) : null
+      setErreurAnalyse(detail || (err instanceof Error ? err.message : 'Analyse impossible.'))
     }
     setBusyAnalyse(false)
   }
