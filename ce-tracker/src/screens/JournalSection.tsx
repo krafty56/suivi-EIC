@@ -15,8 +15,21 @@ import {
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
 import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
+import { usePremium } from '../lib/premium'
 import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
+import { Verrou } from '../components/Verrou'
+
+/** Lit un fichier en base64 sans le préfixe data:...;base64, — c'est ce que
+ * l'API Anthropic attend pour une image envoyée en ligne. */
+function fichierEnBase64(fichier: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '')
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(fichier)
+  })
+}
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
 const ENTREES_HORS_CATALOGUE: Raccourci[] = [
@@ -438,6 +451,20 @@ function AjoutSheet({
   const [erreurPhoto, setErreurPhoto] = useState<string | null>(null)
   const photoActuelle = evenement?.storage_path ?? null
 
+  // Suggestion de score fécal par l'IA (échelle de Purina), à partir de la
+  // photo tout juste choisie — jamais enregistrée automatiquement, la valeur
+  // sélectionnée reste modifiable comme n'importe quelle intensité saisie
+  // à la main.
+  const { isPremium } = usePremium()
+  const [busyAnalyse, setBusyAnalyse] = useState(false)
+  const [erreurAnalyse, setErreurAnalyse] = useState<string | null>(null)
+  const [analyseIA, setAnalyseIA] = useState<{
+    score: number | null
+    confiance: string
+    justification: string
+  } | null>(null)
+  const [verrouAnalyseOuvert, setVerrouAnalyseOuvert] = useState(false)
+
   useEffect(() => {
     if (!fichierPhoto) {
       setPreviewUrl(null)
@@ -447,6 +474,30 @@ function AjoutSheet({
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [fichierPhoto])
+
+  async function analyserPhoto() {
+    if (!fichierPhoto) return
+    if (!isPremium) {
+      setVerrouAnalyseOuvert(true)
+      return
+    }
+    setBusyAnalyse(true)
+    setErreurAnalyse(null)
+    setAnalyseIA(null)
+    try {
+      const image = await fichierEnBase64(fichierPhoto)
+      const { data, error: fnError } = await supabase.functions.invoke('extract-fecal-score', {
+        body: { image, mediaType: fichierPhoto.type || 'image/jpeg' },
+      })
+      if (fnError) throw fnError
+      const resultat = data as { score: number | null; confiance: string; justification: string }
+      setAnalyseIA(resultat)
+      if (resultat.score !== null) setIntensite(resultat.score)
+    } catch (err) {
+      setErreurAnalyse(err instanceof Error ? err.message : 'Analyse impossible.')
+    }
+    setBusyAnalyse(false)
+  }
 
   async function handleEnregistrer() {
     if (!choisi) return
@@ -787,6 +838,8 @@ function AjoutSheet({
               onChange={(e) => {
                 setFichierPhoto(e.target.files?.[0] ?? null)
                 setPhotoSupprimee(false)
+                setAnalyseIA(null)
+                setErreurAnalyse(null)
               }}
               className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
             />
@@ -796,14 +849,54 @@ function AjoutSheet({
                 onClick={() => {
                   setFichierPhoto(null)
                   setPhotoSupprimee(true)
+                  setAnalyseIA(null)
+                  setErreurAnalyse(null)
                 }}
                 className="mt-2 text-sm font-medium text-red-700 underline"
               >
                 Retirer la photo
               </button>
             )}
+
+            {fichierPhoto && (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full py-2.5 text-sm"
+                  disabled={busyAnalyse}
+                  onClick={() => void analyserPhoto()}
+                >
+                  {busyAnalyse
+                    ? 'Analyse en cours…'
+                    : isPremium
+                      ? '🤖 Analyser avec l’IA'
+                      : '🔒 Analyser avec l’IA'}
+                </Button>
+                {analyseIA && (
+                  <p
+                    className={`mt-2 text-sm ${analyseIA.score !== null ? 'text-slate-700' : 'text-amber-800'}`}
+                  >
+                    {analyseIA.score !== null
+                      ? `Score suggéré : ${analyseIA.score} (confiance ${analyseIA.confiance}) — ${analyseIA.justification}`
+                      : analyseIA.justification}
+                  </p>
+                )}
+                <ErrorMessage>{erreurAnalyse}</ErrorMessage>
+              </div>
+            )}
+
             <ErrorMessage>{erreurPhoto}</ErrorMessage>
           </div>
+        )}
+
+        {verrouAnalyseOuvert && (
+          <Sheet title="Score fécal par IA" onClose={() => setVerrouAnalyseOuvert(false)}>
+            <Verrou
+              titre="Score fécal par IA"
+              description="Analyse la photo de la selle et suggère un score sur l'échelle de Purina — réservé au premium. Le score reste modifiable avant d'enregistrer."
+            />
+          </Sheet>
         )}
 
         <Field label="Quand ?">
