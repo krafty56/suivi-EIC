@@ -43,7 +43,10 @@ function redimensionnerPourAnalyse(fichier: File): Promise<{ base64: string; med
         return
       }
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+      // Qualité haute : à 1568 px, la marge jusqu'aux 10 Mo Anthropic est
+      // large, et c'est justement la texture fine (mat/luisant, craquelé/
+      // lisse) qui distingue les scores adjacents — pas là qu'économiser.
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
       resolve({ base64: dataUrl.split(',')[1] ?? '', mediaType: 'image/jpeg' })
     }
     image.onerror = () => {
