@@ -151,6 +151,17 @@ export type Absence = {
   note: string | null
 }
 
+/** Ressenti global hebdomadaire du propriétaire (1 à 10), distinct des
+ * symptômes cliniques : une dégradation ou une amélioration du quotidien
+ * n'apparaît pas toujours dans les seuls chiffres. */
+export type QualiteVie = {
+  id: string
+  dog_id: string
+  date: string
+  score: number
+  note: string | null
+}
+
 export type TypeCarnetSante = 'vaccin' | 'antiparasitaire' | 'autre'
 export type UniteRappel = 'jours' | 'semaines' | 'mois'
 

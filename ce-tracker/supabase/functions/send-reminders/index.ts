@@ -1,7 +1,8 @@
 // Rappels par notification push : rendez-vous du lendemain, prises de
-// médicament à l'heure programmée, et échéances du carnet de santé
-// (vaccins, antiparasitaires) du lendemain. Appelée toutes les dix minutes
-// par la tâche pg_cron « send-reminders » (voir la migration
+// médicament à l'heure programmée, échéances du carnet de santé (vaccins,
+// antiparasitaires) du lendemain, et rappel hebdomadaire de qualité de vie
+// chaque dimanche à 20h. Appelée toutes les dix minutes par la tâche
+// pg_cron « send-reminders » (voir la migration
 // 20260801280000_push_notifications.sql).
 //
 // Fuseau horaire : l'application n'a qu'un seul foyer d'utilisation, fixé en
@@ -132,6 +133,32 @@ Deno.serve(async () => {
       url: '/',
     })
     await supabase.from('carnet_sante').update({ notified_at: new Date().toISOString() }).eq('id', entree.id)
+  }
+
+  // Rappel hebdomadaire de qualité de vie, chaque dimanche à 20h (fenêtre de
+  // la tâche planifiée), pas encore envoyé cette semaine. Porté par le
+  // chien plutôt que par une ligne à part : ce rappel n'est lié à aucune
+  // entité précise, contrairement aux autres rappels ci-dessus.
+  const HEURE_RAPPEL_QDV_MINUTES = 20 * 60 // 20:00
+  const estDimanche = new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() === 0
+
+  if (estDimanche) {
+    const [hN, mN] = heure.split(':').map(Number)
+    const ecartMinutes = hN * 60 + mN - HEURE_RAPPEL_QDV_MINUTES
+    if (ecartMinutes >= 0 && ecartMinutes < FENETRE_MINUTES) {
+      const { data: chiens } = await supabase.from('dogs').select('id, name, dernier_rappel_qualite_vie')
+
+      for (const chien of chiens ?? []) {
+        if (chien.dernier_rappel_qualite_vie === aujourdhui) continue
+
+        await envoyer(chien.id, {
+          titre: 'Qualité de vie',
+          corps: `Comment était ${chien.name} cette semaine ?`,
+          url: '/',
+        })
+        await supabase.from('dogs').update({ dernier_rappel_qualite_vie: aujourdhui }).eq('id', chien.id)
+      }
+    }
   }
 
   return new Response('ok')

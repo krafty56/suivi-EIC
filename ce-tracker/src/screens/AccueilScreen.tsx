@@ -9,6 +9,7 @@ import type {
   Dog,
   DogMedication,
   Energie,
+  QualiteVie,
   SuiviEvent,
 } from '../lib/types'
 import {
@@ -36,6 +37,7 @@ import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 import AbsenceSheet from './AbsenceSheet'
 import CrisisSheet from './CrisisSheet'
+import QualiteVieSheet from './QualiteVieSheet'
 
 type Props = { dog: Dog }
 
@@ -74,9 +76,13 @@ export default function AccueilScreen({ dog }: Props) {
   const [prochainRdv, setProchainRdv] = useState<Appointment | null>(null)
   const [derniereCrise, setDerniereCrise] = useState<Crise | null | undefined>(undefined)
   const [derniereAbsence, setDerniereAbsence] = useState<Absence | null>(null)
+  // Dix dernières entrées : assez pour la bande de tendance, jamais bloquant
+  // si la table n'est pas encore déployée (voir le fail-soft plus bas).
+  const [qualiteVie, setQualiteVie] = useState<QualiteVie[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [crisisSheetMode, setCrisisSheetMode] = useState<'nouvelle' | 'modifier' | null>(null)
   const [absenceSheetMode, setAbsenceSheetMode] = useState<'nouvelle' | 'modifier' | null>(null)
+  const [qualiteVieSheetOuverte, setQualiteVieSheetOuverte] = useState(false)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
@@ -97,6 +103,7 @@ export default function AccueilScreen({ dog }: Props) {
         rdvResult,
         criseResult,
         absenceResult,
+        qualiteVieResult,
         events7jResult,
         entries7jResult,
       ] = await Promise.all([
@@ -138,6 +145,12 @@ export default function AccueilScreen({ dog }: Props) {
             .limit(1)
             .maybeSingle(),
           supabase
+            .from('qualite_vie')
+            .select('*')
+            .eq('dog_id', dog.id)
+            .order('date', { ascending: false })
+            .limit(10),
+          supabase
             .from('events')
             .select('*')
             .eq('dog_id', dog.id)
@@ -166,8 +179,9 @@ export default function AccueilScreen({ dog }: Props) {
       setProchainRdv(rdvResult.data as Appointment | null)
       setDerniereCrise(criseResult.data as Crise | null)
       // Erreur ignorée plutôt que bloquante : le reste de l'écran ne doit pas
-      // dépendre du déploiement de la table absences.
+      // dépendre du déploiement de la table absences (ou de qualite_vie).
       setDerniereAbsence(absenceResult.error ? null : (absenceResult.data as Absence | null))
+      setQualiteVie(qualiteVieResult.error ? [] : (qualiteVieResult.data as QualiteVie[]))
       setEvents7j(events7jResult.data as SuiviEvent[])
       setEntries7j(entries7jResult.data as DailyEntry[])
 
@@ -212,6 +226,8 @@ export default function AccueilScreen({ dog }: Props) {
   const absenceEnCours = derniereAbsence?.date_fin === null ? derniereAbsence : null
   const alertes =
     derniereCrise !== undefined ? detecterAlertes(events7j, entries7j, derniereCrise) : []
+  const debutSemaine = reculerDe(todayISO(), 6)
+  const qualiteVieCetteSemaine = qualiteVie?.find((q) => q.date >= debutSemaine) ?? null
 
   return (
     <div className="space-y-4 p-4 pb-8">
@@ -219,6 +235,49 @@ export default function AccueilScreen({ dog }: Props) {
         <p className="text-sm text-slate-500 capitalize">{formatLongDate(todayISO())}</p>
         <h2 className="text-xl font-bold text-slate-900">Bonjour, voici la journée de {dog.name}</h2>
       </div>
+
+      {qualiteVie !== null && (
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl" aria-hidden="true">
+                🐾
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-700">Qualité de vie</p>
+                {qualiteVieCetteSemaine ? (
+                  <p className="text-2xl font-bold tabular-nums text-slate-900">
+                    {qualiteVieCetteSemaine.score}/10
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-500">Pas encore évaluée cette semaine</p>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0 py-2 text-xs"
+              onClick={() => setQualiteVieSheetOuverte(true)}
+            >
+              {qualiteVieCetteSemaine ? 'Modifier' : 'Évaluer'}
+            </Button>
+          </div>
+          {qualiteVie.length > 1 && (
+            <div className="mt-3 flex gap-1.5">
+              {[...qualiteVie].reverse().map((q) => (
+                <span
+                  key={q.id}
+                  title={`${formatShortDate(q.date)} — ${q.score}/10`}
+                  className={`h-2.5 flex-1 rounded-full ${
+                    q.score <= 3 ? 'bg-red-500' : q.score <= 6 ? 'bg-amber-500' : 'bg-emerald-600'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {alertes.length > 0 && !isPremium && (
         <Verrou
@@ -487,6 +546,19 @@ export default function AccueilScreen({ dog }: Props) {
         <Sheet title={zoomed.nom} onClose={() => setZoomed(null)}>
           <img src={stoolPhotoUrl(zoomed.storage_path)} alt="" className="w-full rounded-xl" />
         </Sheet>
+      )}
+
+      {qualiteVieSheetOuverte && (
+        <QualiteVieSheet
+          dogId={dog.id}
+          dogName={dog.name}
+          entree={qualiteVieCetteSemaine}
+          onClose={() => setQualiteVieSheetOuverte(false)}
+          onSaved={() => {
+            setQualiteVieSheetOuverte(false)
+            setRefreshSignal((n) => n + 1)
+          }}
+        />
       )}
     </div>
   )
