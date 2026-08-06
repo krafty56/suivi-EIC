@@ -20,14 +20,37 @@ import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
-/** Lit un fichier en base64 sans le préfixe data:...;base64, — c'est ce que
- * l'API Anthropic attend pour une image envoyée en ligne. */
-function fichierEnBase64(fichier: File): Promise<string> {
+/** Redimensionne et recompresse la photo avant de l'envoyer à l'IA : une
+ * photo de smartphone dépasse vite les 10 Mo par image acceptés par
+ * l'API Anthropic, et une telle résolution n'apporte rien pour juger une
+ * simple consistance de selle. Ne touche jamais le fichier original, qui
+ * part tel quel dans le stockage à l'enregistrement de l'entrée. */
+function redimensionnerPourAnalyse(fichier: File): Promise<{ base64: string; mediaType: string }> {
+  const TAILLE_MAX_PX = 1568
+
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '')
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(fichier)
+    const image = new Image()
+    const url = URL.createObjectURL(fichier)
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      const ratio = Math.min(1, TAILLE_MAX_PX / Math.max(image.naturalWidth, image.naturalHeight))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(image.naturalWidth * ratio)
+      canvas.height = Math.round(image.naturalHeight * ratio)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Redimensionnement impossible.'))
+        return
+      }
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+      resolve({ base64: dataUrl.split(',')[1] ?? '', mediaType: 'image/jpeg' })
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Photo illisible.'))
+    }
+    image.src = url
   })
 }
 
@@ -485,9 +508,9 @@ function AjoutSheet({
     setErreurAnalyse(null)
     setAnalyseIA(null)
     try {
-      const image = await fichierEnBase64(fichierPhoto)
+      const { base64, mediaType } = await redimensionnerPourAnalyse(fichierPhoto)
       const { data, error: fnError } = await supabase.functions.invoke('extract-fecal-score', {
-        body: { image, mediaType: fichierPhoto.type || 'image/jpeg' },
+        body: { image: base64, mediaType },
       })
       if (fnError) throw fnError
       const resultat = data as { score: number | null; confiance: string; justification: string }
