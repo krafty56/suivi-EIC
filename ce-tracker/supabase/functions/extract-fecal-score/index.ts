@@ -44,19 +44,25 @@ const TOOL = {
   },
 }
 
-// Mêmes libellés que FECAL_SCORES côté app (data/catalogs.ts), pour que le
-// score proposé par l'IA corresponde exactement à ce que l'utilisateur
-// verrait en le choisissant lui-même.
+// Libellés courts alignés sur FECAL_SCORES côté app (data/catalogs.ts), pour
+// que le score proposé par l'IA corresponde à ce que l'utilisateur verrait
+// en le choisissant lui-même — mais avec des critères visuels plus détaillés
+// que ce libellé court, pour trancher entre scores adjacents (notamment 1 vs
+// 2, confondus lors d'un premier test réel : un boudin segmenté mais encore
+// souple et légèrement luisant est un 2, pas un 1).
 const SYSTEM_PROMPT = `Tu notes une photo de selle de chien selon l'échelle de Purina (1 à 7), pour aider un propriétaire à suivre une entéropathie chronique.
 
-Échelle :
-1. Très dure et sèche, en petites boulettes, ne laisse aucune trace.
-2. Ferme, bien formée, segmentée, ne laisse pas de trace au ramassage.
-3. Bien formée mais plus humide, laisse une légère trace.
-4. Très humide, encore formée mais molle, laisse une trace nette.
-5. Très molle, perd sa forme, se dépose en tas.
-6. Texture de purée, sans forme définie.
-7. Liquide, aqueuse, aucune consistance.
+Échelle, avec les critères qui distinguent chaque score de ses voisins :
+
+1. Très dure et sèche. Boulettes individuelles et bien séparées les unes des autres (comme des crottes de lapin), surface mate et craquelée, cassante. Aucune trace, aucun brillant.
+2. Ferme mais souple (pas cassante), pas sèche à l'œil. Un seul boudin continu mais visiblement segmenté (segments encore reliés entre eux, pas des boulettes séparées). La surface peut être légèrement luisante ou humide sans que ça change le score, tant que la forme reste nette et qu'aucune trace ne serait laissée au ramassage.
+3. Bien formée, un seul boudin lisse (segmentation à peine visible ou absente), surface visiblement humide, laisserait une légère trace au ramassage.
+4. Encore un boudin identifiable mais mou, s'affaisse sous son propre poids, surface très humide, laisserait une trace nette.
+5. Perd sa forme de boudin, s'étale en tas ou en amas, aucune tenue.
+6. Texture de purée ou de bouillie, aucune forme, ne se tient pas du tout.
+7. Liquide, flaque, aucune texture solide.
+
+La distinction 1 vs 2 est la plus souvent manquée : un boudin segmenté mais encore souple et d'un seul tenant est un 2 ; seules des boulettes vraiment séparées les unes des autres, sèches et cassantes, sont un 1.
 
 Juge uniquement la consistance (forme, tenue, texture), jamais la couleur ni la présence de sang ou de mucus — ce sont d'autres champs de l'app, saisis séparément par le propriétaire.
 
