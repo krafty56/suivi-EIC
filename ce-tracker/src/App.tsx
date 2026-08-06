@@ -125,7 +125,12 @@ function AppShell({
   // établi) ; le vétérinaire, plus souvent sur ordinateur, reçoit une
   // colonne bien plus large qui utilise vraiment l'écran plutôt que de
   // flotter en colonne étroite au milieu d'un moniteur de bureau.
-  const largeurShell = isVet ? 'w-full max-w-md sm:max-w-2xl lg:max-w-4xl xl:max-w-6xl' : 'max-w-md'
+  // Remplit la largeur disponible directement plutôt que par paliers de
+  // breakpoint : un palier (sm/lg/xl) peut tomber juste au-dessus de la
+  // largeur logique réelle de la fenêtre (résolution avec mise à l'échelle
+  // de l'écran par exemple) et laisser l'affichage bloqué sur un palier
+  // trop étroit malgré une fenêtre large.
+  const largeurShell = isVet ? 'w-full max-w-6xl' : 'max-w-md'
 
   return (
     <PremiumUpgradeProvider ouvrir={() => setPremiumOuvert(true)}>
