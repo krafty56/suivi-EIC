@@ -1,6 +1,7 @@
-// Rappels par notification push : rendez-vous du lendemain et prises de
-// médicament à l'heure programmée. Appelée toutes les dix minutes par la
-// tâche pg_cron « send-reminders » (voir la migration
+// Rappels par notification push : rendez-vous du lendemain, prises de
+// médicament à l'heure programmée, et échéances du carnet de santé
+// (vaccins, antiparasitaires) du lendemain. Appelée toutes les dix minutes
+// par la tâche pg_cron « send-reminders » (voir la migration
 // 20260801280000_push_notifications.sql).
 //
 // Fuseau horaire : l'application n'a qu'un seul foyer d'utilisation, fixé en
@@ -113,6 +114,24 @@ Deno.serve(async () => {
       url: '/',
     })
     await supabase.from('dog_medications').update({ derniere_notification: aujourdhui }).eq('id', med.id)
+  }
+
+  // Échéances du carnet de santé (vaccins, antiparasitaires) tombant demain,
+  // pas encore notifiées. prochaine_echeance est calculée en base à partir
+  // de rappel_valeur/rappel_unite.
+  const { data: echeances } = await supabase
+    .from('carnet_sante')
+    .select('*')
+    .eq('prochaine_echeance', demain)
+    .is('notified_at', null)
+
+  for (const entree of echeances ?? []) {
+    await envoyer(entree.dog_id, {
+      titre: 'Rappel santé demain',
+      corps: entree.nom,
+      url: '/',
+    })
+    await supabase.from('carnet_sante').update({ notified_at: new Date().toISOString() }).eq('id', entree.id)
   }
 
   return new Response('ok')

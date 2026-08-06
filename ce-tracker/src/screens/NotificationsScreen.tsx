@@ -42,8 +42,9 @@ export default function NotificationsScreen({ dog }: Props) {
     <div className="space-y-4 p-4">
       <Card>
         <p className="text-sm text-slate-600">
-          Un rappel la veille d’un rendez-vous noté dans l’agenda, et un rappel à l’heure
-          programmée pour chaque médicament actif.
+          Un rappel la veille d’un rendez-vous noté dans l’agenda, un rappel à l’heure programmée
+          pour chaque médicament actif, et un rappel la veille de chaque échéance du carnet de
+          santé (vaccin, antiparasitaire).
         </p>
       </Card>
 

@@ -151,6 +151,25 @@ export type Absence = {
   note: string | null
 }
 
+export type TypeCarnetSante = 'vaccin' | 'antiparasitaire' | 'autre'
+export type UniteRappel = 'jours' | 'semaines' | 'mois'
+
+/** Une entrée du carnet de santé : un vaccin ou un antiparasitaire administré
+ * à une date donnée, avec un rappel optionnel exprimé en délai depuis cette
+ * date (ex. « dans 3 mois ») plutôt qu'en date fixe. prochaine_echeance est
+ * calculée côté base à partir de rappel_valeur/rappel_unite. */
+export type CarnetSante = {
+  id: string
+  dog_id: string
+  type: TypeCarnetSante
+  nom: string
+  date_administration: string
+  rappel_valeur: number | null
+  rappel_unite: UniteRappel | null
+  prochaine_echeance: string | null
+  note: string | null
+}
+
 export type VetShare = {
   id: string
   dog_id: string

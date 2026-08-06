@@ -2,19 +2,29 @@ import { Suspense, lazy, useState } from 'react'
 import type { Dog } from '../lib/types'
 import { Spinner } from '../components/ui'
 import AlimentationScreen from './AlimentationScreen'
+import CarnetSanteScreen from './CarnetSanteScreen'
 import DogFormScreen from './DogFormScreen'
 import MedicationsScreen from './MedicationsScreen'
 import NotificationsScreen from './NotificationsScreen'
 import SharingScreen from './SharingScreen'
 import VeterinairesScreen from './VeterinairesScreen'
 
-type Vue = 'fiche' | 'poids' | 'alimentation' | 'medicaments' | 'veterinaires' | 'partage' | 'notifications'
+type Vue =
+  | 'fiche'
+  | 'poids'
+  | 'alimentation'
+  | 'medicaments'
+  | 'carnet_sante'
+  | 'veterinaires'
+  | 'partage'
+  | 'notifications'
 
 const VUES: { id: Vue; label: string }[] = [
   { id: 'fiche', label: 'Fiche' },
   { id: 'poids', label: 'Poids' },
   { id: 'alimentation', label: 'Alimentation' },
   { id: 'medicaments', label: 'Médicaments' },
+  { id: 'carnet_sante', label: 'Carnet de santé' },
   { id: 'veterinaires', label: 'Mes vétos' },
   { id: 'partage', label: 'Partage' },
   { id: 'notifications', label: 'Rappels' },
@@ -65,6 +75,7 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
       )}
       {vue === 'alimentation' && <AlimentationScreen dogId={dog.id} />}
       {vue === 'medicaments' && <MedicationsScreen dogId={dog.id} />}
+      {vue === 'carnet_sante' && <CarnetSanteScreen dogId={dog.id} />}
       {vue === 'veterinaires' && <VeterinairesScreen dogId={dog.id} />}
       {vue === 'partage' && <SharingScreen dogId={dog.id} />}
       {vue === 'notifications' && <NotificationsScreen dog={dog} />}

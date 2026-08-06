@@ -51,6 +51,28 @@ export const MEDICATION_CATALOG: { categorie: string; medicaments: string[] }[] 
   },
 ]
 
+/** Suggestions du carnet de santé, par type — de simples raccourcis de
+ * saisie, le nom restant un champ libre pour les protocoles spécifiques. */
+export const VACCINS_SUGGERES = [
+  'CHPPi (carré, hépatite, parvovirose, parainfluenza)',
+  'Leptospirose',
+  'Rage',
+  'Toux du chenil',
+  'Piroplasmose',
+]
+
+export const ANTIPARASITAIRES_SUGGERES = [
+  'Vermifuge (interne)',
+  'Antipuce / antitique (externe)',
+  'Traitement combiné interne + externe',
+]
+
+export const UNITES_RAPPEL: { value: 'jours' | 'semaines' | 'mois'; label: string }[] = [
+  { value: 'jours', label: 'jours' },
+  { value: 'semaines', label: 'semaines' },
+  { value: 'mois', label: 'mois' },
+]
+
 /** Liste de symptômes du sélecteur « ajouter un symptôme », fixe pour cette phase. */
 export const SYMPTOM_CATALOG: { categorie: string; symptomes: string[] }[] = [
   {
