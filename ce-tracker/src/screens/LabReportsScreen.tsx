@@ -18,6 +18,16 @@ export default function LabReportsScreen({ dogId }: Props) {
   const [folderSheet, setFolderSheet] = useState<'new' | LabReportFolder | null>(null)
   const [zoomed, setZoomed] = useState<LabReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set())
+
+  function toggle(cle: string) {
+    setOuverts((prev) => {
+      const suivant = new Set(prev)
+      if (suivant.has(cle)) suivant.delete(cle)
+      else suivant.add(cle)
+      return suivant
+    })
+  }
 
   async function load() {
     const [reportsResult, foldersResult] = await Promise.all([
@@ -108,10 +118,34 @@ export default function LabReportsScreen({ dogId }: Props) {
 
       {groupes.map(({ folder, items }) => {
         if (!folder && items.length === 0) return null
+        const cle = folder?.id ?? 'sans-dossier'
+        const ouvert = ouverts.has(cle)
         return (
-          <div key={folder?.id ?? 'sans-dossier'} className="space-y-2">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <p className="text-sm font-semibold text-slate-700">{folder ? folder.nom : 'Sans dossier'}</p>
+          <div key={cle} className="space-y-2">
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200">
+              <button
+                type="button"
+                onClick={() => toggle(cle)}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              >
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${ouvert ? 'rotate-90' : ''}`}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="truncate text-sm font-semibold text-slate-700">
+                  {folder ? folder.nom : 'Sans dossier'}
+                </span>
+                <span className="shrink-0 text-xs text-slate-400 tabular-nums">
+                  {items.length}
+                </span>
+              </button>
               {folder && (
                 <div className="flex shrink-0 gap-3">
                   <button
@@ -132,12 +166,13 @@ export default function LabReportsScreen({ dogId }: Props) {
               )}
             </div>
 
-            {items.length === 0 ? (
-              <Card>
-                <p className="text-sm text-slate-400 italic">Dossier vide.</p>
-              </Card>
-            ) : (
-              items.map((report) => (
+            {ouvert &&
+              (items.length === 0 ? (
+                <Card>
+                  <p className="text-sm text-slate-400 italic">Dossier vide.</p>
+                </Card>
+              ) : (
+                items.map((report) => (
                 <Card key={report.id}>
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-sm font-semibold text-slate-900 first-letter:uppercase">
@@ -212,7 +247,7 @@ export default function LabReportsScreen({ dogId }: Props) {
                   </div>
                 </Card>
               ))
-            )}
+            ))}
           </div>
         )
       })}
