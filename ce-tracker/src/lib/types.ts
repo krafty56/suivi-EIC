@@ -191,6 +191,13 @@ export type VetShare = {
   revoked_at: string | null
 }
 
+export type LabReportFolder = {
+  id: string
+  dog_id: string
+  nom: string
+  created_at: string
+}
+
 export type LabReport = {
   id: string
   dog_id: string
@@ -198,6 +205,10 @@ export type LabReport = {
   /** Absent pour un compte rendu texte seul, importé sans photo source. */
   storage_path: string | null
   lab_name: string | null
+  /** Titre choisi par l'utilisateur pour retrouver le document, indépendant
+   * du nom de fichier technique (un UUID) du storage_path. */
+  titre: string | null
+  folder_id: string | null
   note: string | null
   albumine: number | null
 }

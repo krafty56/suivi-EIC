@@ -22,7 +22,7 @@ import {
 import { estActiveLe, joursDeLEpisode } from '../lib/journal'
 import { Button, Card, Sheet, Spinner } from '../components/ui'
 import Logo from '../components/Logo'
-import { labPhotoUrl } from '../lib/storage'
+import { estPdf, labPhotoUrl } from '../lib/storage'
 
 type Props = { token: string }
 
@@ -252,7 +252,7 @@ export default function SharedDossierScreen({ token }: Props) {
             {lab_reports.map((report) => (
               <figure key={report.id}>
                 <figcaption className="text-sm font-medium text-slate-700 first-letter:uppercase">
-                  {formatLongDate(report.date)}
+                  {report.titre || formatLongDate(report.date)}
                   {report.lab_name && (
                     <span className="font-normal text-slate-500"> — {report.lab_name}</span>
                   )}
@@ -260,15 +260,33 @@ export default function SharedDossierScreen({ token }: Props) {
                     <span className="font-normal text-slate-600"> — albuminémie {report.albumine} g/L</span>
                   )}
                 </figcaption>
-                {report.storage_path && (
-                  <button type="button" onClick={() => setZoomed(report)} className="mt-1 block w-full">
-                    <img
-                      src={labPhotoUrl(report.storage_path)}
-                      alt={`Compte rendu du ${report.date}`}
-                      className="w-full rounded-xl ring-1 ring-slate-200"
-                    />
-                  </button>
+                {report.titre && (
+                  <p className="text-xs text-slate-500 first-letter:uppercase">
+                    {formatLongDate(report.date)}
+                  </p>
                 )}
+                {report.storage_path &&
+                  (estPdf(report.storage_path) ? (
+                    <a
+                      href={labPhotoUrl(report.storage_path)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex items-center gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-xs font-bold text-red-700">
+                        PDF
+                      </span>
+                      <span className="text-sm font-medium text-brand-800">Ouvrir le compte rendu</span>
+                    </a>
+                  ) : (
+                    <button type="button" onClick={() => setZoomed(report)} className="mt-1 block w-full">
+                      <img
+                        src={labPhotoUrl(report.storage_path)}
+                        alt={report.titre || `Compte rendu du ${report.date}`}
+                        className="w-full rounded-xl ring-1 ring-slate-200"
+                      />
+                    </button>
+                  ))}
                 {report.note && <p className="mt-1 text-sm text-slate-700">{report.note}</p>}
               </figure>
             ))}
@@ -277,10 +295,10 @@ export default function SharedDossierScreen({ token }: Props) {
       )}
 
       {zoomed?.storage_path && (
-        <Sheet title={formatLongDate(zoomed.date)} onClose={() => setZoomed(null)}>
+        <Sheet title={zoomed.titre || formatLongDate(zoomed.date)} onClose={() => setZoomed(null)}>
           <img
             src={labPhotoUrl(zoomed.storage_path)}
-            alt={`Compte rendu du ${zoomed.date}`}
+            alt={zoomed.titre || `Compte rendu du ${zoomed.date}`}
             className="w-full rounded-xl"
           />
           {zoomed.note && <p className="mt-3 text-sm text-slate-600">{zoomed.note}</p>}
