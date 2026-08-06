@@ -60,8 +60,8 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
                 : 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 hover:bg-brand-50'
             }`}
           >
-            <span className="block text-xl">{item.emoji}</span>
-            <span className="mt-1 block">{item.label}</span>
+            <span className="block text-xl leading-none">{item.emoji}</span>
+            <span className="mt-1.5 block px-0.5 leading-tight break-words">{item.label}</span>
           </button>
         ))}
       </div>
