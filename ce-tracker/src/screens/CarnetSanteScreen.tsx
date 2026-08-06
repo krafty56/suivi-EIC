@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { CarnetSante, TypeCarnetSante, UniteRappel } from '../lib/types'
 import { ANTIPARASITAIRES_SUGGERES, UNITES_RAPPEL, VACCINS_SUGGERES } from '../data/catalogs'
 import { formatShortDate, todayISO } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
 
 type Props = { dogId: string }
@@ -42,6 +43,7 @@ const CLASSES_ECHEANCE: Record<'rouge' | 'orange' | 'slate', string> = {
 }
 
 export default function CarnetSanteScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [entrees, setEntrees] = useState<CarnetSante[] | null>(null)
   const [editing, setEditing] = useState<CarnetSante | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -85,13 +87,9 @@ export default function CarnetSanteScreen({ dogId }: Props) {
         </Card>
       )}
 
-      {entrees.map((entree) => (
-        <Card key={entree.id} className="p-0">
-          <button
-            type="button"
-            onClick={() => setEditing(entree)}
-            className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-slate-50"
-          >
+      {entrees.map((entree) => {
+        const contenu = (
+          <>
             <span className="shrink-0 text-xl" aria-hidden="true">
               {EMOJI_TYPE[entree.type]}
             </span>
@@ -109,29 +107,48 @@ export default function CarnetSanteScreen({ dogId }: Props) {
                 </span>
               )}
             </div>
-          </button>
-          <div className="flex border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setEditing(entree)}
-              className="flex-1 px-4 py-2 text-center text-sm font-medium text-brand-700 hover:bg-brand-50"
-            >
-              Modifier
-            </button>
-            <button
-              type="button"
-              onClick={() => void supprimer(entree)}
-              className="flex-1 border-l border-slate-100 px-4 py-2 text-center text-sm font-medium text-red-700 hover:bg-red-50"
-            >
-              Supprimer
-            </button>
-          </div>
-        </Card>
-      ))}
+          </>
+        )
+        return (
+          <Card key={entree.id} className="p-0">
+            {isVet ? (
+              <div className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3">{contenu}</div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(entree)}
+                className="flex w-full items-start gap-3 rounded-2xl px-3.5 py-3 text-left hover:bg-slate-50"
+              >
+                {contenu}
+              </button>
+            )}
+            {!isVet && (
+              <div className="flex border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditing(entree)}
+                  className="flex-1 px-4 py-2 text-center text-sm font-medium text-brand-700 hover:bg-brand-50"
+                >
+                  Modifier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void supprimer(entree)}
+                  className="flex-1 border-l border-slate-100 px-4 py-2 text-center text-sm font-medium text-red-700 hover:bg-red-50"
+                >
+                  Supprimer
+                </button>
+              </div>
+            )}
+          </Card>
+        )
+      })}
 
-      <Button type="button" className="w-full" onClick={() => setEditing('new')}>
-        Ajouter une entrée
-      </Button>
+      {!isVet && (
+        <Button type="button" className="w-full" onClick={() => setEditing('new')}>
+          Ajouter une entrée
+        </Button>
+      )}
 
       {editing && (
         <CarnetSanteSheet

@@ -3,12 +3,14 @@ import { supabase } from '../lib/supabase'
 import type { ClinicalScore } from '../lib/types'
 import { TOUS_LES_ITEMS } from '../data/scores'
 import { formatLongDate } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Spinner } from '../components/ui'
 import ScoreSheet from './ScoreSheet'
 
 type Props = { dogId: string }
 
 export default function ScoresScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [scores, setScores] = useState<ClinicalScore[] | null>(null)
   const [saisie, setSaisie] = useState(false)
   const [deplie, setDeplie] = useState<string | null>(null)
@@ -113,9 +115,11 @@ export default function ScoresScreen({ dogId }: Props) {
         )
       })}
 
-      <Button type="button" className="w-full" onClick={() => setSaisie(true)}>
-        Nouvelle évaluation
-      </Button>
+      {!isVet && (
+        <Button type="button" className="w-full" onClick={() => setSaisie(true)}>
+          Nouvelle évaluation
+        </Button>
+      )}
 
       {saisie && (
         <ScoreSheet

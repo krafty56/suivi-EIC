@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Dog } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
 import { calculerAge, todayISO } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, inputClass } from '../components/ui'
 
 type Props = {
@@ -20,6 +21,7 @@ function toNumber(value: string): number | null {
 }
 
 export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
+  const isVet = useVetMode()
   const [name, setName] = useState(dog?.name ?? '')
   const [race, setRace] = useState(dog?.race ?? '')
   const [dateNaissance, setDateNaissance] = useState(dog?.date_naissance ?? '')
@@ -68,6 +70,7 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
+      <fieldset disabled={isVet} className="space-y-4">
       {!dog && (
         <p className="text-sm text-slate-600">
           Commençons par la fiche de votre chien. Seul le nom est obligatoire, le reste peut être
@@ -151,13 +154,16 @@ export default function DogFormScreen({ dog, ownerId, onSaved }: Props) {
         </div>
         <p className="mt-3 min-h-5 text-sm text-slate-600">{bcsLabel ?? 'Aucun score sélectionné.'}</p>
       </Card>
+      </fieldset>
 
       <ErrorMessage>{error}</ErrorMessage>
       {saved && <p className="text-sm font-medium text-brand-700">Fiche enregistrée.</p>}
 
-      <Button type="submit" disabled={busy} className="w-full">
-        {busy ? 'Enregistrement…' : dog ? 'Enregistrer les modifications' : 'Créer la fiche'}
-      </Button>
+      {!isVet && (
+        <Button type="submit" disabled={busy} className="w-full">
+          {busy ? 'Enregistrement…' : dog ? 'Enregistrer les modifications' : 'Créer la fiche'}
+        </Button>
+      )}
     </form>
   )
 }

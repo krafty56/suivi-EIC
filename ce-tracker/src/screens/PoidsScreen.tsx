@@ -12,6 +12,7 @@ import {
 import { supabase } from '../lib/supabase'
 import type { Dog, Weight } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 
 type Props = { dog: Dog; onDogChange: (dog: Dog) => void }
@@ -29,6 +30,7 @@ function toNumber(value: string): number | null {
  * chien (c'est ce qui arrivait quand le poids vivait dans le formulaire de
  * fiche). Liste, graphique, et ajout à une date choisie. */
 export default function PoidsScreen({ dog, onDogChange }: Props) {
+  const isVet = useVetMode()
   const [weights, setWeights] = useState<Weight[] | null>(null)
   const [date, setDate] = useState(todayISO())
   const [poids, setPoids] = useState('')
@@ -105,33 +107,35 @@ export default function PoidsScreen({ dog, onDogChange }: Props) {
 
   return (
     <div className="space-y-4 p-4">
-      <Card>
-        <form onSubmit={(e) => void enregistrer(e)} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Date">
-              <input
-                type="date"
-                value={date}
-                max={todayISO()}
-                onChange={(e) => setDate(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Poids (kg)">
-              <input
-                inputMode="decimal"
-                value={poids}
-                onChange={(e) => setPoids(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-          </div>
-          <ErrorMessage>{error}</ErrorMessage>
-          <Button type="submit" disabled={busy} className="w-full">
-            {busy ? 'Enregistrement…' : 'Ajouter cette pesée'}
-          </Button>
-        </form>
-      </Card>
+      {!isVet && (
+        <Card>
+          <form onSubmit={(e) => void enregistrer(e)} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Date">
+                <input
+                  type="date"
+                  value={date}
+                  max={todayISO()}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Poids (kg)">
+                <input
+                  inputMode="decimal"
+                  value={poids}
+                  onChange={(e) => setPoids(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+            <ErrorMessage>{error}</ErrorMessage>
+            <Button type="submit" disabled={busy} className="w-full">
+              {busy ? 'Enregistrement…' : 'Ajouter cette pesée'}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {weights === null ? (
         <Spinner />
@@ -177,14 +181,16 @@ export default function PoidsScreen({ dog, onDogChange }: Props) {
                   <span className="flex-1 text-right text-sm font-semibold tabular-nums text-slate-900">
                     {mesure.poids} kg
                   </span>
-                  <button
-                    type="button"
-                    aria-label={`Supprimer la pesée du ${mesure.date}`}
-                    onClick={() => void supprimer(mesure.id)}
-                    className="shrink-0 rounded-lg px-1.5 py-1 text-lg leading-none text-slate-400 hover:bg-slate-100"
-                  >
-                    &times;
-                  </button>
+                  {!isVet && (
+                    <button
+                      type="button"
+                      aria-label={`Supprimer la pesée du ${mesure.date}`}
+                      onClick={() => void supprimer(mesure.id)}
+                      className="shrink-0 rounded-lg px-1.5 py-1 text-lg leading-none text-slate-400 hover:bg-slate-100"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

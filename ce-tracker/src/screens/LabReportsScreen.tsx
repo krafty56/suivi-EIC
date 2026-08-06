@@ -4,6 +4,7 @@ import type { LabReport, LabReportFolder } from '../lib/types'
 import { formatLongDate, todayISO } from '../lib/date'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { LAB_BUCKET, estPdf, labPhotoUrl } from '../lib/storage'
+import { useVetMode } from '../lib/vetMode'
 
 type Props = { dogId: string }
 
@@ -11,6 +12,7 @@ const SANS_DOSSIER = '__sans_dossier__'
 const NOUVEAU_DOSSIER = '__nouveau__'
 
 export default function LabReportsScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [reports, setReports] = useState<LabReport[] | null>(null)
   const [folders, setFolders] = useState<LabReportFolder[] | null>(null)
   const [adding, setAdding] = useState(false)
@@ -146,7 +148,7 @@ export default function LabReportsScreen({ dogId }: Props) {
                   {items.length}
                 </span>
               </button>
-              {folder && (
+              {folder && !isVet && (
                 <div className="flex shrink-0 gap-3">
                   <button
                     type="button"
@@ -227,24 +229,26 @@ export default function LabReportsScreen({ dogId }: Props) {
                       <p className="mt-1 text-sm text-slate-400 italic">Aucun fichier, aucune note.</p>
                     )
                   )}
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="flex-1 py-2 text-sm"
-                      onClick={() => setEditing(report)}
-                    >
-                      Modifier
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      className="flex-1 py-2 text-sm"
-                      onClick={() => void remove(report)}
-                    >
-                      Supprimer
-                    </Button>
-                  </div>
+                  {!isVet && (
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="flex-1 py-2 text-sm"
+                        onClick={() => setEditing(report)}
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="flex-1 py-2 text-sm"
+                        onClick={() => void remove(report)}
+                      >
+                        Supprimer
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               ))
             ))}
@@ -253,9 +257,11 @@ export default function LabReportsScreen({ dogId }: Props) {
       })}
 
       <div className="flex gap-2">
-        <Button type="button" variant="secondary" className="flex-1" onClick={() => setFolderSheet('new')}>
-          Nouveau dossier
-        </Button>
+        {!isVet && (
+          <Button type="button" variant="secondary" className="flex-1" onClick={() => setFolderSheet('new')}>
+            Nouveau dossier
+          </Button>
+        )}
         <Button type="button" className="flex-1" onClick={() => setAdding(true)}>
           Ajouter un compte rendu
         </Button>
@@ -374,6 +380,7 @@ function LabReportSheet({
   onClose: () => void
   onSaved: () => void
 }) {
+  const isVet = useVetMode()
   const [date, setDate] = useState(report?.date ?? todayISO())
   const [titre, setTitre] = useState(report?.titre ?? '')
   const [folderChoice, setFolderChoice] = useState(report?.folder_id ?? SANS_DOSSIER)
@@ -498,11 +505,11 @@ function LabReportSheet({
                 {f.nom}
               </option>
             ))}
-            <option value={NOUVEAU_DOSSIER}>+ Nouveau dossier…</option>
+            {!isVet && <option value={NOUVEAU_DOSSIER}>+ Nouveau dossier…</option>}
           </select>
         </Field>
 
-        {folderChoice === NOUVEAU_DOSSIER && (
+        {folderChoice === NOUVEAU_DOSSIER && !isVet && (
           <Field label="Nom du nouveau dossier">
             <input
               type="text"

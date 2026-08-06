@@ -4,6 +4,7 @@ import type { Absence, Crise, DailyEntry, SuiviEvent, Weight } from '../lib/type
 import { todayISO } from '../lib/date'
 import { type Categorie, construireJours } from '../lib/journal'
 import { usePremium } from '../lib/premium'
+import { useVetMode } from '../lib/vetMode'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
@@ -44,6 +45,7 @@ function reculerDe(date: string, jours: number): string {
 
 export default function HistoryScreen({ dogId }: Props) {
   const { isPremium } = usePremium()
+  const isVet = useVetMode()
   const [mode, setMode] = useState<ModePeriode>({ kind: 'preset', jours: 30 })
   const [debutPerso, setDebutPerso] = useState(reculerDe(todayISO(), 29))
   const [finPerso, setFinPerso] = useState(todayISO())
@@ -278,11 +280,11 @@ export default function HistoryScreen({ dogId }: Props) {
               recherche={recherche}
               categoriesActives={categoriesActives}
               repas={repasEvents}
-              onDelete={supprimer}
-              onDeletePoids={supprimerPoids}
+              onDelete={isVet ? undefined : supprimer}
+              onDeletePoids={isVet ? undefined : supprimerPoids}
               onZoom={setZoomed}
-              onEditCrise={setEditingCrise}
-              onEditAbsence={setEditingAbsence}
+              onEditCrise={isVet ? undefined : setEditingCrise}
+              onEditAbsence={isVet ? undefined : setEditingAbsence}
             />
           ))}
         </div>

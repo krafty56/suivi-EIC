@@ -14,6 +14,7 @@ import {
   type ParameterGroup,
 } from '../lib/labValues'
 import { formatLongDate, formatShortDateAvecAnnee } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import LabAnalysisImportSheet from './LabAnalysisImport'
 
@@ -27,6 +28,7 @@ const COULEUR_FLAG: Record<string, string> = {
 }
 
 export default function LabValuesScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [valeurs, setValeurs] = useState<LabValue[] | null>(null)
   const [recherche, setRecherche] = useState('')
   const [filtre, setFiltre] = useState<string | null>(null)
@@ -120,9 +122,11 @@ export default function LabValuesScreen({ dogId }: Props) {
             d’une analyse d’urine : l’app en extrait les paramètres, avec l’intervalle et le
             graphique de suivi.
           </p>
-          <Button type="button" className="mt-3 w-full" onClick={() => setImportOuvert(true)}>
-            Ajouter une analyse
-          </Button>
+          {!isVet && (
+            <Button type="button" className="mt-3 w-full" onClick={() => setImportOuvert(true)}>
+              Ajouter une analyse
+            </Button>
+          )}
         </Card>
       ) : (
         <>
@@ -151,7 +155,7 @@ export default function LabValuesScreen({ dogId }: Props) {
                 {formatShortDateAvecAnnee(groupes.reduce((max, g) => (g.derniere.date > max ? g.derniere.date : max), groupes[0].derniere.date))}
               </p>
             )}
-            {imports.length > 0 && (
+            {imports.length > 0 && !isVet && (
               <button
                 type="button"
                 onClick={() => setGererOuvert(true)}
@@ -162,9 +166,11 @@ export default function LabValuesScreen({ dogId }: Props) {
             )}
           </Card>
 
-          <Button type="button" className="w-full" onClick={() => setImportOuvert(true)}>
-            Ajouter une analyse
-          </Button>
+          {!isVet && (
+            <Button type="button" className="w-full" onClick={() => setImportOuvert(true)}>
+              Ajouter une analyse
+            </Button>
+          )}
 
           <input
             type="search"
@@ -197,8 +203,8 @@ export default function LabValuesScreen({ dogId }: Props) {
               <ParametreCard
                 key={groupe.key}
                 groupe={groupe}
-                onSupprimer={supprimerMesure}
-                onModifier={setEnEdition}
+                onSupprimer={isVet ? undefined : supprimerMesure}
+                onModifier={isVet ? undefined : setEnEdition}
               />
             ))
           )}
@@ -368,8 +374,8 @@ function ParametreCard({
   onModifier,
 }: {
   groupe: ParameterGroup
-  onSupprimer: (id: string) => void
-  onModifier: (mesure: LabValue) => void
+  onSupprimer?: (id: string) => void
+  onModifier?: (mesure: LabValue) => void
 }) {
   const [ouvert, setOuvert] = useState(false)
   const { mesures, derniere, unitesHeterogenes } = groupe
@@ -470,8 +476,8 @@ function ParametreCard({
               {[...mesures].reverse().map((m) => (
                 <tr
                   key={m.id}
-                  onClick={() => onModifier(m)}
-                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={onModifier ? () => onModifier(m) : undefined}
+                  className={onModifier ? 'cursor-pointer hover:bg-slate-50' : ''}
                 >
                   <td className="py-1.5 pr-2 tabular-nums text-slate-700">
                     {formatShortDateAvecAnnee(m.date)}
@@ -484,17 +490,19 @@ function ParametreCard({
                     {m.ref_low !== null && m.ref_high !== null ? `${m.ref_low} – ${m.ref_high}` : '—'}
                   </td>
                   <td className="py-1.5 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSupprimer(m.id)
-                      }}
-                      aria-label="Supprimer cette mesure"
-                      className="text-slate-400 hover:text-red-600"
-                    >
-                      &times;
-                    </button>
+                    {onSupprimer && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSupprimer(m.id)
+                        }}
+                        aria-label="Supprimer cette mesure"
+                        className="text-slate-400 hover:text-red-600"
+                      >
+                        &times;
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

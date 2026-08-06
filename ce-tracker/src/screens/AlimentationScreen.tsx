@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { FoodEntry } from '../lib/types'
 import { formatLongDate, formatShortDate, todayISO, veilleDe } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 
 type Props = { dogId: string }
@@ -12,6 +13,7 @@ type Props = { dogId: string }
  * entéropathie chronique, savoir ce qui a changé et quand est souvent la clé
  * pour relier une amélioration ou une poussée à son déclencheur. */
 export default function AlimentationScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [entries, setEntries] = useState<FoodEntry[] | null>(null)
   const [dateDebut, setDateDebut] = useState(todayISO())
   const [marque, setMarque] = useState('')
@@ -75,57 +77,59 @@ export default function AlimentationScreen({ dogId }: Props) {
 
   return (
     <div className="space-y-4 p-4">
-      <Card>
-        <form onSubmit={(e) => void enregistrer(e)} className="space-y-3">
-          <Field label="Depuis le">
-            <input
-              type="date"
-              value={dateDebut}
-              max={todayISO()}
-              onChange={(e) => setDateDebut(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Marque">
+      {!isVet && (
+        <Card>
+          <form onSubmit={(e) => void enregistrer(e)} className="space-y-3">
+            <Field label="Depuis le">
               <input
-                value={marque}
-                onChange={(e) => setMarque(e.target.value)}
+                type="date"
+                value={dateDebut}
+                max={todayISO()}
+                onChange={(e) => setDateDebut(e.target.value)}
                 className={inputClass}
-                placeholder="Royal Canin"
               />
             </Field>
-            <Field label="Référence">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Marque">
+                <input
+                  value={marque}
+                  onChange={(e) => setMarque(e.target.value)}
+                  className={inputClass}
+                  placeholder="Royal Canin"
+                />
+              </Field>
+              <Field label="Référence">
+                <input
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  className={inputClass}
+                  placeholder="Gastro Low Fat"
+                />
+              </Field>
+            </div>
+            <Field label="Quantité par jour">
               <input
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
+                value={quantiteJour}
+                onChange={(e) => setQuantiteJour(e.target.value)}
                 className={inputClass}
-                placeholder="Gastro Low Fat"
+                placeholder="250 g"
               />
             </Field>
-          </div>
-          <Field label="Quantité par jour">
-            <input
-              value={quantiteJour}
-              onChange={(e) => setQuantiteJour(e.target.value)}
-              className={inputClass}
-              placeholder="250 g"
-            />
-          </Field>
-          <Field label="Note" hint="Motif du changement, réaction du chien…">
-            <textarea
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <ErrorMessage>{error}</ErrorMessage>
-          <Button type="submit" disabled={busy} className="w-full">
-            {busy ? 'Enregistrement…' : 'Ajouter ce changement'}
-          </Button>
-        </form>
-      </Card>
+            <Field label="Note" hint="Motif du changement, réaction du chien…">
+              <textarea
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <ErrorMessage>{error}</ErrorMessage>
+            <Button type="submit" disabled={busy} className="w-full">
+              {busy ? 'Enregistrement…' : 'Ajouter ce changement'}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {entries === null ? (
         <Spinner />
@@ -162,14 +166,16 @@ export default function AlimentationScreen({ dogId }: Props) {
                     )}
                     {entry.note && <p className="mt-1 text-sm text-slate-600 italic">{entry.note}</p>}
                   </div>
-                  <button
-                    type="button"
-                    aria-label={`Supprimer ${entry.marque ?? entry.reference ?? 'cet aliment'}`}
-                    onClick={() => void supprimer(entry.id)}
-                    className="shrink-0 rounded-lg px-1.5 py-1 text-lg leading-none text-slate-400 hover:bg-slate-100"
-                  >
-                    &times;
-                  </button>
+                  {!isVet && (
+                    <button
+                      type="button"
+                      aria-label={`Supprimer ${entry.marque ?? entry.reference ?? 'cet aliment'}`}
+                      onClick={() => void supprimer(entry.id)}
+                      className="shrink-0 rounded-lg px-1.5 py-1 text-lg leading-none text-slate-400 hover:bg-slate-100"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </div>
               </Card>
             )

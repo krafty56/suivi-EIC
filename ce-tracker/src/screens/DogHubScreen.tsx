@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState } from 'react'
 import type { Dog } from '../lib/types'
+import { useVetMode } from '../lib/vetMode'
 import { Spinner } from '../components/ui'
 import AlimentationScreen from './AlimentationScreen'
 import CarnetSanteScreen from './CarnetSanteScreen'
@@ -43,12 +44,17 @@ const PoidsScreen = lazy(() => import('./PoidsScreen'))
 /** Regroupe ce qui se configure une fois : la fiche, le poids, le traitement,
  * les liens vétérinaires. */
 export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
+  const isVet = useVetMode()
   const [vue, setVue] = useState<Vue>('fiche')
+  // Partage (gestion des liens vétérinaire) et Rappels (abonnement aux
+  // notifications de cet appareil) n'ont pas de sens pour le vétérinaire
+  // lui-même : ni l'un ni l'autre n'est un contenu du dossier à consulter.
+  const vuesVisibles = isVet ? VUES.filter((v) => v.id !== 'partage' && v.id !== 'notifications') : VUES
 
   return (
     <div>
       <div className="grid grid-cols-4 gap-2 px-4 pt-4 pb-1">
-        {VUES.map((item) => (
+        {vuesVisibles.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -78,8 +84,8 @@ export default function DogHubScreen({ dog, ownerId, onSaved }: Props) {
       {vue === 'medicaments' && <MedicationsScreen dogId={dog.id} />}
       {vue === 'carnet_sante' && <CarnetSanteScreen dogId={dog.id} />}
       {vue === 'veterinaires' && <VeterinairesScreen dogId={dog.id} />}
-      {vue === 'partage' && <SharingScreen dogId={dog.id} />}
-      {vue === 'notifications' && <NotificationsScreen dog={dog} />}
+      {vue === 'partage' && !isVet && <SharingScreen dogId={dog.id} />}
+      {vue === 'notifications' && !isVet && <NotificationsScreen dog={dog} />}
     </div>
   )
 }

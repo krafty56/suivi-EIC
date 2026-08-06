@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { DogMedication } from '../lib/types'
 import { MEDICATION_CATALOG } from '../data/catalogs'
 import { formatTime } from '../lib/date'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 
 const AUTRE = '__autre__'
@@ -13,6 +14,7 @@ const CATALOG_NAMES = MEDICATION_CATALOG.flatMap((group) => group.medicaments)
 type Props = { dogId: string }
 
 export default function MedicationsScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [medications, setMedications] = useState<DogMedication[] | null>(null)
   const [editing, setEditing] = useState<DogMedication | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +93,8 @@ export default function MedicationsScreen({ dogId }: Props) {
               aria-checked={medication.actif}
               aria-label={`Rendre ${medication.nom_medicament} ${medication.actif ? 'inactif' : 'actif'}`}
               onClick={() => void toggleActif(medication)}
-              className={`mt-1 h-6 w-11 shrink-0 rounded-full transition-colors ${
+              disabled={isVet}
+              className={`mt-1 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
                 medication.actif ? 'bg-brand-600' : 'bg-slate-300'
               }`}
             >
@@ -103,30 +106,34 @@ export default function MedicationsScreen({ dogId }: Props) {
             </button>
           </div>
 
-          <div className="mt-3 flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className="flex-1 py-2 text-sm"
-              onClick={() => setEditing(medication)}
-            >
-              Modifier
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              className="py-2 text-sm"
-              onClick={() => void remove(medication)}
-            >
-              Supprimer
-            </Button>
-          </div>
+          {!isVet && (
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1 py-2 text-sm"
+                onClick={() => setEditing(medication)}
+              >
+                Modifier
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                className="py-2 text-sm"
+                onClick={() => void remove(medication)}
+              >
+                Supprimer
+              </Button>
+            </div>
+          )}
         </Card>
       ))}
 
-      <Button type="button" className="w-full" onClick={() => setEditing('new')}>
-        Ajouter un médicament
-      </Button>
+      {!isVet && (
+        <Button type="button" className="w-full" onClick={() => setEditing('new')}>
+          Ajouter un médicament
+        </Button>
+      )}
 
       {editing && (
         <MedicationSheet

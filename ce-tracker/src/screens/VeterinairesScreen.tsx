@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Veterinaire } from '../lib/types'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 
 type Props = { dogId: string }
@@ -8,6 +9,7 @@ type Props = { dogId: string }
 /** Carnet des cliniques/vétérinaires du chien : autant qu'on veut, chacun
  * avec un numéro qui appelle et un email qui écrit en un tap. */
 export default function VeterinairesScreen({ dogId }: Props) {
+  const isVet = useVetMode()
   const [veterinaires, setVeterinaires] = useState<Veterinaire[] | null>(null)
   const [editing, setEditing] = useState<Veterinaire | 'new' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,30 +76,34 @@ export default function VeterinairesScreen({ dogId }: Props) {
             )}
           </div>
 
-          <div className="mt-3 flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              className="flex-1 py-2 text-sm"
-              onClick={() => setEditing(veterinaire)}
-            >
-              Modifier
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              className="py-2 text-sm"
-              onClick={() => void remove(veterinaire)}
-            >
-              Supprimer
-            </Button>
-          </div>
+          {!isVet && (
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1 py-2 text-sm"
+                onClick={() => setEditing(veterinaire)}
+              >
+                Modifier
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                className="py-2 text-sm"
+                onClick={() => void remove(veterinaire)}
+              >
+                Supprimer
+              </Button>
+            </div>
+          )}
         </Card>
       ))}
 
-      <Button type="button" className="w-full" onClick={() => setEditing('new')}>
-        Ajouter un vétérinaire
-      </Button>
+      {!isVet && (
+        <Button type="button" className="w-full" onClick={() => setEditing('new')}>
+          Ajouter un vétérinaire
+        </Button>
+      )}
 
       {editing && (
         <VeterinaireSheet

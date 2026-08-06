@@ -4,6 +4,7 @@ import type { Appointment } from '../lib/types'
 import { formatLongDate, formatTime, todayISO } from '../lib/date'
 import { icsRendezVous, telechargerIcs, urlGoogleCalendar } from '../lib/calendrier'
 import { usePremium } from '../lib/premium'
+import { useVetMode } from '../lib/vetMode'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
@@ -26,6 +27,7 @@ type OngletRepere = (typeof ONGLETS_REPERES)[number]['id']
 
 export default function AgendaScreen({ dogId, dogName, onPreparer }: Props) {
   const { isPremium } = usePremium()
+  const isVet = useVetMode()
   const [rendezVous, setRendezVous] = useState<Appointment[] | null>(null)
   const [ajout, setAjout] = useState<'nouveau' | Appointment | null>(null)
   const [reperesOuverts, setReperesOuverts] = useState(false)
@@ -70,9 +72,11 @@ export default function AgendaScreen({ dogId, dogName, onPreparer }: Props) {
 
   return (
     <div className="space-y-4 p-4">
-      <Button type="button" className="w-full" onClick={() => setAjout('nouveau')}>
-        📅 Ajouter un rendez-vous
-      </Button>
+      {!isVet && (
+        <Button type="button" className="w-full" onClick={() => setAjout('nouveau')}>
+          📅 Ajouter un rendez-vous
+        </Button>
+      )}
 
       <Card>
         <button
@@ -267,8 +271,8 @@ export default function AgendaScreen({ dogId, dogName, onPreparer }: Props) {
                 key={r.id}
                 r={r}
                 isPremium={isPremium}
-                onEdit={() => setAjout(r)}
-                onDelete={() => void supprimer(r.id)}
+                onEdit={isVet ? undefined : () => setAjout(r)}
+                onDelete={isVet ? undefined : () => void supprimer(r.id)}
                 onPreparer={() => preparer(r)}
                 onCalendrier={() => setCalendrierPour(r)}
               />
@@ -284,7 +288,12 @@ export default function AgendaScreen({ dogId, dogName, onPreparer }: Props) {
           </p>
           <div className="space-y-2">
             {passes.map((r) => (
-              <LigneRendezVous key={r.id} r={r} onEdit={() => setAjout(r)} onDelete={() => void supprimer(r.id)} />
+              <LigneRendezVous
+                key={r.id}
+                r={r}
+                onEdit={isVet ? undefined : () => setAjout(r)}
+                onDelete={isVet ? undefined : () => void supprimer(r.id)}
+              />
             ))}
           </div>
         </div>
@@ -397,40 +406,51 @@ function LigneRendezVous({
 }: {
   r: Appointment
   isPremium?: boolean
-  onEdit: () => void
-  onDelete: () => void
+  onEdit?: () => void
+  onDelete?: () => void
   onPreparer?: () => void
   onCalendrier?: () => void
 }) {
+  const contenu = (
+    <>
+      <span className="shrink-0 text-xl" aria-hidden="true">
+        📅
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold text-slate-900 capitalize">{formatLongDate(r.date)}</p>
+        <p className="mt-0.5 text-sm text-slate-700">
+          {r.motif}
+          {r.heure && <span className="text-slate-500"> · {formatTime(r.heure)}</span>}
+        </p>
+        {r.clinique && <p className="mt-0.5 text-xs text-slate-500">{r.clinique}</p>}
+        {r.note && <p className="mt-1 text-sm text-slate-600">{r.note}</p>}
+      </div>
+    </>
+  )
   return (
     <Card className="p-0">
       <div className="flex items-center gap-1 p-1">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-50"
-        >
-          <span className="shrink-0 text-xl" aria-hidden="true">
-            📅
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold text-slate-900 capitalize">{formatLongDate(r.date)}</p>
-            <p className="mt-0.5 text-sm text-slate-700">
-              {r.motif}
-              {r.heure && <span className="text-slate-500"> · {formatTime(r.heure)}</span>}
-            </p>
-            {r.clinique && <p className="mt-0.5 text-xs text-slate-500">{r.clinique}</p>}
-            {r.note && <p className="mt-1 text-sm text-slate-600">{r.note}</p>}
-          </div>
-        </button>
-        <button
-          type="button"
-          aria-label={`Supprimer le rendez-vous du ${formatLongDate(r.date)}`}
-          onClick={onDelete}
-          className="shrink-0 self-start rounded-lg px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-100"
-        >
-          &times;
-        </button>
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-slate-50"
+          >
+            {contenu}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3">{contenu}</div>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            aria-label={`Supprimer le rendez-vous du ${formatLongDate(r.date)}`}
+            onClick={onDelete}
+            className="shrink-0 self-start rounded-lg px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-100"
+          >
+            &times;
+          </button>
+        )}
       </div>
       {(onCalendrier || onPreparer) && (
         <div className="flex divide-x divide-slate-100 border-t border-slate-100">

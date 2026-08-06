@@ -32,6 +32,7 @@ import {
   todayISO,
 } from '../lib/date'
 import { usePremium } from '../lib/premium'
+import { useVetMode } from '../lib/vetMode'
 import { stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import { Verrou } from '../components/Verrou'
@@ -67,6 +68,7 @@ function reculerDe(date: string, jours: number): string {
  * La correction ou l'ajout d'une entrée se fait dans l'onglet Saisir. */
 export default function AccueilScreen({ dog }: Props) {
   const { isPremium } = usePremium()
+  const isVet = useVetMode()
   const [events, setEvents] = useState<SuiviEvent[] | null>(null)
   const [entry, setEntry] = useState<DailyEntry | null>(null)
   const [events7j, setEvents7j] = useState<SuiviEvent[]>([])
@@ -254,14 +256,16 @@ export default function AccueilScreen({ dog }: Props) {
                 )}
               </div>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="shrink-0 py-2 text-xs"
-              onClick={() => setQualiteVieSheetOuverte(true)}
-            >
-              {qualiteVieCetteSemaine ? 'Modifier' : 'Évaluer'}
-            </Button>
+            {!isVet && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 py-2 text-xs"
+                onClick={() => setQualiteVieSheetOuverte(true)}
+              >
+                {qualiteVieCetteSemaine ? 'Modifier' : 'Évaluer'}
+              </Button>
+            )}
           </div>
           {qualiteVie.length > 1 && (
             <div className="mt-3 flex gap-1.5">
@@ -314,7 +318,7 @@ export default function AccueilScreen({ dog }: Props) {
                 )}
               </div>
             </div>
-            {enCrise && (
+            {enCrise && !isVet && (
               <Button
                 type="button"
                 variant="secondary"
@@ -340,14 +344,16 @@ export default function AccueilScreen({ dog }: Props) {
                 <p className="text-xs text-slate-500">Aucun symptôme ne peut être noté comme fiable.</p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="shrink-0 py-2 text-xs"
-              onClick={() => setAbsenceSheetMode('modifier')}
-            >
-              Clôturer
-            </Button>
+            {!isVet && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 py-2 text-xs"
+                onClick={() => setAbsenceSheetMode('modifier')}
+              >
+                Clôturer
+              </Button>
+            )}
           </div>
         </Card>
       )}
@@ -499,24 +505,26 @@ export default function AccueilScreen({ dog }: Props) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          type="button"
-          variant="danger"
-          className="py-2.5 text-sm"
-          onClick={() => setCrisisSheetMode('nouvelle')}
-        >
-          🚨 Signaler une crise
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="py-2.5 text-sm"
-          onClick={() => setAbsenceSheetMode('nouvelle')}
-        >
-          🧳 Signaler une absence
-        </Button>
-      </div>
+      {!isVet && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="danger"
+            className="py-2.5 text-sm"
+            onClick={() => setCrisisSheetMode('nouvelle')}
+          >
+            🚨 Signaler une crise
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="py-2.5 text-sm"
+            onClick={() => setAbsenceSheetMode('nouvelle')}
+          >
+            🧳 Signaler une absence
+          </Button>
+        </div>
+      )}
 
       {crisisSheetMode && (
         <CrisisSheet
