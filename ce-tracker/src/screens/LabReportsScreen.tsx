@@ -7,6 +7,13 @@ import { LAB_BUCKET, labPhotoUrl } from '../lib/storage'
 
 type Props = { dogId: string }
 
+/** PDF plutôt que photo : le chemin de stockage se termine en .pdf. Un
+ * compte rendu PDF s'affiche via un lien vers le lecteur natif (crisp, zoomable)
+ * plutôt qu'une balise img, illisible pour un document texte. */
+function estPdf(storagePath: string): boolean {
+  return storagePath.toLowerCase().endsWith('.pdf')
+}
+
 export default function LabReportsScreen({ dogId }: Props) {
   const [reports, setReports] = useState<LabReport[] | null>(null)
   const [adding, setAdding] = useState(false)
@@ -59,12 +66,13 @@ export default function LabReportsScreen({ dogId }: Props) {
   return (
     <div className="space-y-3 p-4">
       <p className="text-sm text-slate-600">
-        Photographiez les comptes rendus de laboratoire pour les garder avec le suivi. Ils
-        apparaissent dans le dossier partagé avec le vétérinaire.
+        Importez les comptes rendus de laboratoire (PDF ou photo) pour les garder avec le suivi.
+        Ils apparaissent dans le dossier partagé avec le vétérinaire.
       </p>
       <p className="text-xs text-slate-500">
-        Les comptes rendus importés depuis un autre carnet, sans photo source, apparaissent en
-        texte seul.
+        Un PDF reste net et zoomable, contrairement à une photo. Depuis le sélecteur de fichier,
+        vous pouvez aussi choisir un document depuis OneDrive ou Google Drive s'ils sont installés
+        sur votre téléphone.
       </p>
 
       <ErrorMessage>{error}</ErrorMessage>
@@ -92,14 +100,28 @@ export default function LabReportsScreen({ dogId }: Props) {
           )}
           {report.note && <p className="mt-1 text-sm text-slate-600">{report.note}</p>}
           {report.storage_path ? (
-            <button type="button" onClick={() => setZoomed(report)} className="mt-3 block w-full">
-              <img
-                src={labPhotoUrl(report.storage_path)}
-                alt={`Compte rendu du ${report.date}`}
-                loading="lazy"
-                className="max-h-64 w-full rounded-xl object-cover ring-1 ring-slate-200"
-              />
-            </button>
+            estPdf(report.storage_path) ? (
+              <a
+                href={labPhotoUrl(report.storage_path)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-xs font-bold text-red-700">
+                  PDF
+                </span>
+                <span className="text-sm font-medium text-brand-800">Ouvrir le compte rendu</span>
+              </a>
+            ) : (
+              <button type="button" onClick={() => setZoomed(report)} className="mt-3 block w-full">
+                <img
+                  src={labPhotoUrl(report.storage_path)}
+                  alt={`Compte rendu du ${report.date}`}
+                  loading="lazy"
+                  className="max-h-64 w-full rounded-xl object-cover ring-1 ring-slate-200"
+                />
+              </button>
+            )
           ) : (
             !report.note && (
               <p className="mt-1 text-sm text-slate-400 italic">Aucune photo, aucune note.</p>
@@ -164,7 +186,7 @@ function LabReportSheet({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!file) {
-      setError('Choisissez une photo du compte rendu.')
+      setError('Choisissez un document ou une photo du compte rendu.')
       return
     }
     setError(null)
@@ -216,10 +238,13 @@ function LabReportSheet({
           />
         </Field>
 
-        <Field label="Photo" hint="Prenez la photo ou choisissez-la dans votre galerie.">
+        <Field
+          label="Document"
+          hint="PDF (recommandé, plus net) ou photo. Le sélecteur propose aussi vos fichiers OneDrive ou Google Drive si ces apps sont installées."
+        >
           <input
             type="file"
-            accept="image/*"
+            accept="application/pdf,image/*"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
