@@ -674,6 +674,80 @@ function AjoutSheet({
       onClose={onClose}
     >
       <div className="space-y-5">
+        {choisi.type === 'selle' && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Photo (optionnel)</p>
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt=""
+                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
+              />
+            ) : photoActuelle && !photoSupprimee ? (
+              <img
+                src={stoolPhotoUrl(photoActuelle)}
+                alt=""
+                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
+              />
+            ) : null}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                setFichierPhoto(e.target.files?.[0] ?? null)
+                setPhotoSupprimee(false)
+                setAnalyseIA(null)
+                setErreurAnalyse(null)
+              }}
+              className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
+            />
+            {(fichierPhoto || (photoActuelle && !photoSupprimee)) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFichierPhoto(null)
+                  setPhotoSupprimee(true)
+                  setAnalyseIA(null)
+                  setErreurAnalyse(null)
+                }}
+                className="mt-2 text-sm font-medium text-red-700 underline"
+              >
+                Retirer la photo
+              </button>
+            )}
+
+            {fichierPhoto && (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full py-2.5 text-sm"
+                  disabled={busyAnalyse}
+                  onClick={() => void analyserPhoto()}
+                >
+                  {busyAnalyse
+                    ? 'Analyse en cours…'
+                    : isPremium
+                      ? '🤖 Analyser avec l’IA'
+                      : '🔒 Analyser avec l’IA'}
+                </Button>
+                {analyseIA && (
+                  <p
+                    className={`mt-2 text-sm ${analyseIA.score !== null ? 'text-slate-700' : 'text-amber-800'}`}
+                  >
+                    {analyseIA.score !== null
+                      ? `Score suggéré : ${analyseIA.score} (confiance ${analyseIA.confiance}) — ${analyseIA.justification}`
+                      : analyseIA.justification}
+                  </p>
+                )}
+                <ErrorMessage>{erreurAnalyse}</ErrorMessage>
+              </div>
+            )}
+
+            <ErrorMessage>{erreurPhoto}</ErrorMessage>
+          </div>
+        )}
+
         {choisi.echelle && (
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">
@@ -813,80 +887,6 @@ function AjoutSheet({
                 />
               </label>
             ))}
-          </div>
-        )}
-
-        {choisi.type === 'selle' && (
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">Photo (optionnel)</p>
-            {previewUrl ? (
-              <img
-                src={previewUrl}
-                alt=""
-                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
-              />
-            ) : photoActuelle && !photoSupprimee ? (
-              <img
-                src={stoolPhotoUrl(photoActuelle)}
-                alt=""
-                className="mb-2 max-h-48 w-full rounded-xl object-cover ring-1 ring-slate-200"
-              />
-            ) : null}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                setFichierPhoto(e.target.files?.[0] ?? null)
-                setPhotoSupprimee(false)
-                setAnalyseIA(null)
-                setErreurAnalyse(null)
-              }}
-              className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
-            />
-            {(fichierPhoto || (photoActuelle && !photoSupprimee)) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFichierPhoto(null)
-                  setPhotoSupprimee(true)
-                  setAnalyseIA(null)
-                  setErreurAnalyse(null)
-                }}
-                className="mt-2 text-sm font-medium text-red-700 underline"
-              >
-                Retirer la photo
-              </button>
-            )}
-
-            {fichierPhoto && (
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full py-2.5 text-sm"
-                  disabled={busyAnalyse}
-                  onClick={() => void analyserPhoto()}
-                >
-                  {busyAnalyse
-                    ? 'Analyse en cours…'
-                    : isPremium
-                      ? '🤖 Analyser avec l’IA'
-                      : '🔒 Analyser avec l’IA'}
-                </Button>
-                {analyseIA && (
-                  <p
-                    className={`mt-2 text-sm ${analyseIA.score !== null ? 'text-slate-700' : 'text-amber-800'}`}
-                  >
-                    {analyseIA.score !== null
-                      ? `Score suggéré : ${analyseIA.score} (confiance ${analyseIA.confiance}) — ${analyseIA.justification}`
-                      : analyseIA.justification}
-                  </p>
-                )}
-                <ErrorMessage>{erreurAnalyse}</ErrorMessage>
-              </div>
-            )}
-
-            <ErrorMessage>{erreurPhoto}</ErrorMessage>
           </div>
         )}
 
