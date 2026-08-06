@@ -299,7 +299,6 @@ function VetApp({ token }: { token: string }) {
     if (access.status === 'ready') setDog(access.dog)
   }, [access])
 
-  if (access.status === 'loading' || !dog) return <Spinner label="Ouverture du dossier…" />
   if (access.status === 'error') {
     return (
       <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 p-6 text-center">
@@ -308,6 +307,7 @@ function VetApp({ token }: { token: string }) {
       </div>
     )
   }
+  if (access.status === 'loading' || !dog) return <Spinner label="Ouverture du dossier…" />
 
   return (
     <VetModeContext.Provider value={true}>
