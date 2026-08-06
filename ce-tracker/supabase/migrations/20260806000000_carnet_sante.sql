@@ -14,12 +14,15 @@ create table if not exists public.carnet_sante (
   constraint rappel_complet check ((rappel_valeur is null) = (rappel_unite is null)),
   -- Calculée une fois pour toutes en base plutôt que recalculée à chaque
   -- lecture : sert aussi bien au tri de la liste qu'au job de rappel.
+  -- make_interval() plutôt qu'un cast texte ('N days'::interval) : ce
+  -- dernier passe par une fonction jugée non immuable par Postgres, rejetée
+  -- dans une colonne générée (erreur 42P17).
   prochaine_echeance date generated always as (
     case
       when rappel_valeur is null or rappel_unite is null then null
-      when rappel_unite = 'jours' then (date_administration + (rappel_valeur || ' days')::interval)::date
-      when rappel_unite = 'semaines' then (date_administration + (rappel_valeur || ' weeks')::interval)::date
-      when rappel_unite = 'mois' then (date_administration + (rappel_valeur || ' months')::interval)::date
+      when rappel_unite = 'jours' then (date_administration + make_interval(days => rappel_valeur))::date
+      when rappel_unite = 'semaines' then (date_administration + make_interval(weeks => rappel_valeur))::date
+      when rappel_unite = 'mois' then (date_administration + make_interval(months => rappel_valeur))::date
     end
   ) stored,
   note text,
