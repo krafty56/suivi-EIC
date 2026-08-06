@@ -126,7 +126,11 @@ export function joursDeLEpisode(
   const jours: string[] = []
   let curseur = episode.date_debut > debut ? episode.date_debut : debut
   const borneFin = episode.date_fin && episode.date_fin < fin ? episode.date_fin : fin
-  while (curseur <= borneFin) {
+  // Garde-fou : borné à ~11 ans, largement au-delà de toute fenêtre affichée
+  // (max 365 jours) — une donnée corrompue ou un fuseau horaire dégénéré ne
+  // doit jamais transformer ceci en boucle interminable côté navigateur.
+  let securite = 4000
+  while (curseur <= borneFin && securite-- > 0) {
     jours.push(curseur)
     const d = new Date(`${curseur}T00:00:00`)
     d.setDate(d.getDate() + 1)
