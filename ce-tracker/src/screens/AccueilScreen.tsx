@@ -239,7 +239,7 @@ export default function AccueilScreen({ dog }: Props) {
       </div>
 
       {qualiteVie !== null && (
-        <Card>
+        <Card className="lg:max-w-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-2xl" aria-hidden="true">
@@ -299,7 +299,7 @@ export default function AccueilScreen({ dog }: Props) {
         ))}
 
       {derniereCrise !== undefined && (
-        <Card className={enCrise ? 'ring-2 ring-red-200' : ''}>
+        <Card className={`lg:max-w-sm ${enCrise ? 'ring-2 ring-red-200' : ''}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-2xl" aria-hidden="true">
@@ -333,7 +333,7 @@ export default function AccueilScreen({ dog }: Props) {
       )}
 
       {absenceEnCours && (
-        <Card>
+        <Card className="lg:max-w-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-2xl" aria-hidden="true">

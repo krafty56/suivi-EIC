@@ -121,9 +121,15 @@ function AppShell({
   const tabsVisibles = isVet ? TABS.filter((item) => item.id !== 'daily') : TABS
   const currentTab = tabsVisibles.find((item) => item.id === tab) ?? tabsVisibles[0]
 
+  // Le propriétaire reste sur la largeur téléphone (usage PWA mobile
+  // établi) ; le vétérinaire, plus souvent sur ordinateur, reçoit une
+  // colonne bien plus large qui utilise vraiment l'écran plutôt que de
+  // flotter en colonne étroite au milieu d'un moniteur de bureau.
+  const largeurShell = isVet ? 'w-full max-w-md sm:max-w-2xl lg:max-w-4xl xl:max-w-6xl' : 'max-w-md'
+
   return (
     <PremiumUpgradeProvider ouvrir={() => setPremiumOuvert(true)}>
-      <div className="mx-auto flex h-full max-w-md flex-col overflow-hidden bg-slate-50">
+      <div className={`mx-auto flex h-full ${largeurShell} flex-col overflow-hidden bg-slate-50`}>
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold text-slate-900">
