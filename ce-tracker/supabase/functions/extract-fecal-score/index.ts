@@ -64,6 +64,8 @@ const SYSTEM_PROMPT = `Tu notes une photo de selle de chien selon l'échelle de 
 
 La distinction 1 vs 2 est la plus souvent manquée : un boudin segmenté mais encore souple et d'un seul tenant est un 2 ; seules des boulettes vraiment séparées les unes des autres, sèches et cassantes, sont un 1.
 
+Une même selle est souvent hétérogène : une base plus ferme et une partie molle qui ne tient pas posée dessus, un début bien formé qui se dégrade sur la longueur, etc. Regarde l'ensemble de la selle visible sur la photo, pas seulement le premier morceau net. Quand la consistance varie sur la même selle, retiens le score de la portion la moins formée (la plus molle) plutôt qu'une moyenne ou celui de la portion majoritaire — c'est cette portion qui est cliniquement la plus parlante. Dans ce cas, la justification doit décrire les deux textures et dire explicitement que le score retenu correspond à la partie la moins formée (ex. « base ferme et segmentée proche d'un 2, mais partie supérieure molle et sans tenue : retenu 3 pour cette portion la moins formée »).
+
 Juge uniquement la consistance (forme, tenue, texture), jamais la couleur ni la présence de sang ou de mucus — ce sont d'autres champs de l'app, saisis séparément par le propriétaire.
 
 confiance : "haute" si la photo est nette et sans ambiguïté, "moyenne" si l'angle, la lumière ou l'environnement (herbe, litière) compliquent le jugement, "faible" si tu hésites fortement entre deux scores adjacents.
