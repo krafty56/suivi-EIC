@@ -16,6 +16,7 @@ import { supabase } from '../lib/supabase'
 import type { Absence, Crise, DailyEntry, DogMedication, FoodEntry, SuiviEvent } from '../lib/types'
 import { formatShortDate, todayISO } from '../lib/date'
 import { usePremium } from '../lib/premium'
+import { comparerAlimentation, type ComparaisonAlimentation } from '../lib/reponseAlimentation'
 import { comparerTraitements, type ComparaisonTraitement } from '../lib/reponseTraitement'
 import { Button, Card, ErrorMessage, Field, Sheet, Spinner, inputClass } from '../components/ui'
 import { Verrou } from '../components/Verrou'
@@ -124,6 +125,8 @@ export default function AnalysesScreen({ dogId }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [traitements, setTraitements] = useState<ComparaisonTraitement[] | null>(null)
   const [verrouTraitementsOuvert, setVerrouTraitementsOuvert] = useState(false)
+  const [alimentationComparee, setAlimentationComparee] = useState<ComparaisonAlimentation[] | null>(null)
+  const [verrouAlimentationOuvert, setVerrouAlimentationOuvert] = useState(false)
   const [medicamentsChoisis, setMedicamentsChoisis] = useState<string[] | null>(() =>
     chargerChoixTraitements(dogId),
   )
@@ -297,6 +300,65 @@ export default function AnalysesScreen({ dogId }: Props) {
         comparerTraitements(
           medications,
           traitementEvents,
+          e.data as DailyEntry[],
+          ev.data as SuiviEvent[],
+          c.data as Crise[],
+          aujourdhui,
+        ),
+      )
+    }
+    void load()
+    return () => {
+      annule = true
+    }
+  }, [dogId, isPremium])
+
+  // Comparaison avant/après changement alimentaire : réservée au premium,
+  // et indépendante de la période choisie pour les graphiques — même
+  // logique que la comparaison des traitements ci-dessus, appliquée aux
+  // changements alimentaires pour repérer un aliment suspect automatiquement.
+  useEffect(() => {
+    if (!isPremium) {
+      setAlimentationComparee(null)
+      return
+    }
+    let annule = false
+    async function load() {
+      const { data: foodData, error: foodError } = await supabase
+        .from('food_entries')
+        .select('*')
+        .eq('dog_id', dogId)
+        .order('date_debut')
+      if (foodError || annule) return
+      const foods = (foodData ?? []) as FoodEntry[]
+      if (foods.length === 0) {
+        if (!annule) setAlimentationComparee([])
+        return
+      }
+
+      const aujourdhui = todayISO()
+      const fenetreDebut = reculerDe(foods[0].date_debut, 14)
+
+      const [e, c, ev] = await Promise.all([
+        supabase.from('daily_entries').select('*').eq('dog_id', dogId).gte('date', fenetreDebut).lte('date', aujourdhui),
+        supabase
+          .from('crises')
+          .select('*')
+          .eq('dog_id', dogId)
+          .lte('date_debut', aujourdhui)
+          .or(`date_fin.is.null,date_fin.gte.${fenetreDebut}`),
+        supabase
+          .from('events')
+          .select('*')
+          .eq('dog_id', dogId)
+          .gte('at', `${fenetreDebut}T00:00:00`)
+          .limit(10000),
+      ])
+      if (annule || e.error || c.error || ev.error) return
+
+      setAlimentationComparee(
+        comparerAlimentation(
+          foods,
           e.data as DailyEntry[],
           ev.data as SuiviEvent[],
           c.data as Crise[],
@@ -716,6 +778,73 @@ export default function AnalysesScreen({ dogId }: Props) {
               </div>
             )}
           </Card>
+
+          <Card
+            className={!isPremium ? 'opacity-60' : ''}
+            onClick={() => !isPremium && setVerrouAlimentationOuvert(true)}
+          >
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              {isPremium ? 'Réponse à l’alimentation' : '🔒 Réponse à l’alimentation'}
+            </p>
+            {!isPremium ? (
+              <p className="text-sm text-slate-500">
+                Compare automatiquement l'état du chien avant et après chaque changement
+                alimentaire, pour repérer un aliment suspect.
+              </p>
+            ) : alimentationComparee === null ? (
+              <Spinner />
+            ) : alimentationComparee.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-500">
+                Pas encore assez de recul pour comparer un changement alimentaire (au moins 3
+                jours depuis le changement, avec des données saisies avant et après).
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {alimentationComparee.map((a) => (
+                  <div
+                    key={a.foodEntryId}
+                    className={`border-t border-slate-100 pt-3 first:border-0 first:pt-0 ${
+                      a.suspect ? '-mx-2 rounded-xl border-t-0 bg-red-50 px-2 py-2' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-800">{a.nom}</p>
+                      {a.suspect && (
+                        <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                          ⚠️ À surveiller
+                        </span>
+                      )}
+                    </div>
+                    <p className="mb-2 text-xs text-slate-500">Depuis le {formatShortDate(a.dateDebut)}</p>
+                    {a.suspect && a.raison && (
+                      <p className="mb-2 text-xs text-red-700">{a.raison}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-y-1 gap-x-2 text-xs">
+                      <p />
+                      <p className="text-center font-medium text-slate-500">Avant</p>
+                      <p className="text-center font-medium text-slate-500">Après</p>
+
+                      <p className="text-slate-600">Score fécal</p>
+                      <p className="text-center tabular-nums text-slate-800">
+                        {a.avant.scoreMoyen !== null ? a.avant.scoreMoyen.toFixed(1) : '—'}
+                      </p>
+                      <p className="text-center tabular-nums text-slate-800">
+                        {a.apres.scoreMoyen !== null ? a.apres.scoreMoyen.toFixed(1) : '—'}
+                      </p>
+
+                      <p className="text-slate-600">Jours en crise</p>
+                      <p className="text-center tabular-nums text-slate-800">{a.avant.joursEnCrise}</p>
+                      <p className="text-center tabular-nums text-slate-800">{a.apres.joursEnCrise}</p>
+
+                      <p className="text-slate-600">Vomissements</p>
+                      <p className="text-center tabular-nums text-slate-800">{a.avant.vomissements}</p>
+                      <p className="text-center tabular-nums text-slate-800">{a.apres.vomissements}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </>
       )}
 
@@ -733,6 +862,15 @@ export default function AnalysesScreen({ dogId }: Props) {
           <Verrou
             titre="Réponse aux traitements"
             description="Compare automatiquement le score fécal, les crises et les vomissements avant et après le début de chaque traitement actif, pour visualiser son effet réel."
+          />
+        </Sheet>
+      )}
+
+      {verrouAlimentationOuvert && (
+        <Sheet title="Réponse à l’alimentation" onClose={() => setVerrouAlimentationOuvert(false)}>
+          <Verrou
+            titre="Réponse à l’alimentation"
+            description="Compare automatiquement le score fécal, les crises et les vomissements avant et après chaque changement alimentaire, pour repérer un aliment suspect sans avoir à recroiser les dates soi-même."
           />
         </Sheet>
       )}

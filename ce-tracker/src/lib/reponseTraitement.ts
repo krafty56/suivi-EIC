@@ -23,7 +23,10 @@ export type ComparaisonTraitement = {
 
 const FENETRE_JOURS = 14
 
-function ajouterJours(date: string, jours: number): string {
+/** Exportée : réutilisée par reponseAlimentation.ts pour la même logique
+ * de fenêtre avant/après, appliquée aux changements alimentaires plutôt
+ * qu'aux traitements. */
+export function ajouterJours(date: string, jours: number): string {
   const d = new Date(`${date}T00:00:00`)
   d.setDate(d.getDate() + jours)
   return d.toISOString().slice(0, 10)
