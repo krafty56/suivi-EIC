@@ -12,15 +12,30 @@ import type {
   Vomissements,
 } from './types'
 
+/** Détail d'un jour observé, tel qu'il entre dans la moyenne de sévérité —
+ * exposé pour le bouton « Voir le détail » du repère personnel, afin que ce
+ * qui alimente le calcul reste vérifiable plutôt qu'une boîte noire. */
+export type JourDetail = {
+  date: string
+  scoreFecal: number | null
+  vomissements: number
+  symptomes: { nom: string; intensite: number | null }[]
+  gravite: number
+}
+
 /** Un point de repère sur la règle : soit calculé à partir d'un vrai épisode
  * (semaine la plus sévère ou la plus calme de l'historique), soit déclaré à
- * la main faute d'historique suffisant. */
+ * la main faute d'historique suffisant — auquel cas debut/fin/jours restent
+ * vides, il n'y a pas de fenêtre réelle à détailler. */
 export type PointRepere = {
   indice: number
   label: string
   traitement: string | null
   alimentation: string | null
   declare: boolean
+  debut: string | null
+  fin: string | null
+  jours: JourDetail[]
 }
 
 export type ReglePersonnelle = {
@@ -28,10 +43,13 @@ export type ReglePersonnelle = {
   meilleure: PointRepere
   /** 0 = au niveau du pire épisode, 100 = au niveau de la meilleure période. */
   position: number
-  aujourdhui: { traitement: string | null; alimentation: string | null }
-  /** Crises passées à marquer discrètement sur la règle, pour situer le
-   * pire épisode calculé par rapport à ce qui a été déclaré en crise. */
-  crises: { id: string; label: string; position: number }[]
+  aujourdhui: {
+    traitement: string | null
+    alimentation: string | null
+    debut: string
+    fin: string
+    jours: JourDetail[]
+  }
   /** false si au moins un des deux points vient d'une déclaration manuelle
    * plutôt que d'un vrai épisode enregistré. */
   toutCalcule: boolean
@@ -118,6 +136,30 @@ function graviteFenetre(
     ),
   )
   return { indice: valeurs.reduce((a, b) => a + b, 0) / valeurs.length, joursCouverts: jours.size }
+}
+
+/** Détail jour par jour d'une fenêtre — ce qui a concrètement été utilisé
+ * pour calculer sa sévérité moyenne. */
+function detailJours(debut: string, fin: string, entries: DailyEntry[], events: SuiviEvent[]): JourDetail[] {
+  const jours = joursObserves(debut, fin, entries, events)
+  const entriesParDate = new Map(entries.map((e) => [e.date, e]))
+  return [...jours].sort().map((date) => {
+    const entry = entriesParDate.get(date)
+    const evenementsJour = events.filter((e) => jourDe(e.at) === date)
+    const scoresSelle = evenementsJour
+      .filter((e) => e.type === 'selle' && e.intensite !== null)
+      .map((e) => e.intensite as number)
+    const scoreFecal = scoresSelle.length > 0 ? Math.max(...scoresSelle) : (entry?.score_fecal ?? null)
+    return {
+      date,
+      scoreFecal,
+      vomissements: entry?.vomissements_count ?? 0,
+      symptomes: evenementsJour
+        .filter((e) => e.type === 'symptome')
+        .map((e) => ({ nom: e.nom, intensite: e.intensite })),
+      gravite: graviteJournaliere(entry, evenementsJour),
+    }
+  })
 }
 
 function semaineDebut(date: string): string {
@@ -252,6 +294,9 @@ export function construireReglePersonnelle(
         traitement: medicamentsAutourDe(pireCalculee.debut, medicationsDigestives, traitementEvents),
         alimentation: alimentationLe(pireCalculee.debut, foodEntries),
         declare: false,
+        debut: pireCalculee.debut,
+        fin: ajouterJours(pireCalculee.debut, 6),
+        jours: detailJours(pireCalculee.debut, ajouterJours(pireCalculee.debut, 6), entries, events),
       }
     : repereDeclare
       ? {
@@ -262,6 +307,9 @@ export function construireReglePersonnelle(
           traitement: repereDeclare.pire_traitement,
           alimentation: repereDeclare.pire_alimentation,
           declare: true,
+          debut: null,
+          fin: null,
+          jours: [],
         }
       : null
 
@@ -272,6 +320,9 @@ export function construireReglePersonnelle(
         traitement: medicamentsAutourDe(meilleureCalculee.debut, medicationsDigestives, traitementEvents),
         alimentation: alimentationLe(meilleureCalculee.debut, foodEntries),
         declare: false,
+        debut: meilleureCalculee.debut,
+        fin: ajouterJours(meilleureCalculee.debut, 6),
+        jours: detailJours(meilleureCalculee.debut, ajouterJours(meilleureCalculee.debut, 6), entries, events),
       }
     : repereDeclare
       ? {
@@ -282,6 +333,9 @@ export function construireReglePersonnelle(
           traitement: repereDeclare.meilleur_traitement,
           alimentation: repereDeclare.meilleur_alimentation,
           declare: true,
+          debut: null,
+          fin: null,
+          jours: [],
         }
       : null
 
@@ -292,21 +346,9 @@ export function construireReglePersonnelle(
   // d'afficher une règle inversée.
   const [pireFinal, meilleureFinal] = pire.indice >= meilleure.indice ? [pire, meilleure] : [meilleure, pire]
 
-  const statsAujourdhui = graviteFenetre(ajouterJours(aujourdhui, -6), aujourdhui, entries, events)
+  const debutAujourdhui = ajouterJours(aujourdhui, -6)
+  const statsAujourdhui = graviteFenetre(debutAujourdhui, aujourdhui, entries, events)
   const indiceActuel = statsAujourdhui.indice ?? (pireFinal.indice + meilleureFinal.indice) / 2
-
-  const crisesTicks = crises
-    .map((c) => {
-      const fin = c.date_fin ?? aujourdhui
-      const { indice } = graviteFenetre(c.date_debut, fin, entries, events)
-      if (indice === null) return null
-      return {
-        id: c.id,
-        label: formatLongDate(c.date_debut),
-        position: position(pireFinal.indice, meilleureFinal.indice, indice),
-      }
-    })
-    .filter((t): t is { id: string; label: string; position: number } => t !== null)
 
   return {
     pire: pireFinal,
@@ -315,8 +357,10 @@ export function construireReglePersonnelle(
     aujourdhui: {
       traitement: medicamentsActifsMaintenant(medicationsDigestives),
       alimentation: alimentationLe(aujourdhui, foodEntries),
+      debut: debutAujourdhui,
+      fin: aujourdhui,
+      jours: detailJours(debutAujourdhui, aujourdhui, entries, events),
     },
-    crises: crisesTicks,
     toutCalcule: !pireFinal.declare && !meilleureFinal.declare,
   }
 }

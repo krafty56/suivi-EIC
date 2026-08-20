@@ -16,6 +16,7 @@ import { useVetMode } from '../lib/vetMode'
 import { Button, Card } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 import RepereInitialSheet from './RepereInitialSheet'
+import RegleDetailSheet from './RegleDetailSheet'
 
 type Props = { dog: Dog }
 
@@ -26,7 +27,10 @@ export default function ReglePersonnelleCard({ dog }: Props) {
   const isVet = useVetMode()
   const [regle, setRegle] = useState<ReglePersonnelle | null | undefined>(undefined)
   const [repereDeclare, setRepereDeclare] = useState<RepereesPersonnels | null>(null)
+  const [crises, setCrises] = useState<Crise[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
   const [sheetOuverte, setSheetOuverte] = useState(false)
+  const [detailOuvert, setDetailOuvert] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
 
   useEffect(() => {
@@ -57,6 +61,8 @@ export default function ReglePersonnelleCard({ dog }: Props) {
       const traitementEvents = events.filter((e) => e.type === 'traitement')
 
       setRepereDeclare(repere)
+      setCrises(crises)
+      setAbsences(absences)
       setRegle(
         construireReglePersonnelle(entries, events, crises, absences, traitementEvents, medications, foodEntries, repere),
       )
@@ -135,18 +141,6 @@ export default function ReglePersonnelleCard({ dog }: Props) {
           </div>
 
           <div className="relative pt-9 pb-1">
-            {regle.crises.map((tick) => (
-              <div
-                key={tick.id}
-                className="absolute top-5 flex -translate-x-1/2 flex-col items-center gap-0.5"
-                style={{ left: `${tick.position}%` }}
-                title={tick.label}
-              >
-                <span className="text-[9px] font-semibold whitespace-nowrap text-slate-400">{tick.label}</span>
-                <span className="h-2 w-px bg-slate-300" />
-              </div>
-            ))}
-
             <div
               className="h-2.5 rounded-full shadow-[inset_0_1px_2px_rgba(13,24,33,0.12)]"
               style={{ background: COULEUR_GRADIENT, opacity: regle.toutCalcule ? 1 : 0.55 }}
@@ -169,9 +163,6 @@ export default function ReglePersonnelleCard({ dog }: Props) {
                 Pire épisode {regle.pire.declare && <span className="font-medium text-slate-400">(déclaré)</span>}
               </p>
               <p className="text-[11px] text-slate-500">{regle.pire.label}</p>
-              {regle.pire.traitement && (
-                <p className="text-[11px] leading-snug text-slate-500 italic">{regle.pire.traitement}</p>
-              )}
             </div>
             <div className="flex max-w-[48%] flex-col items-end gap-0.5 text-right">
               <p className="text-xs font-bold text-[#4a5c30]">
@@ -179,9 +170,6 @@ export default function ReglePersonnelleCard({ dog }: Props) {
                 {regle.meilleure.declare && <span className="font-medium text-slate-400">(déclarée)</span>}
               </p>
               <p className="text-[11px] text-slate-500">{regle.meilleure.label}</p>
-              {regle.meilleure.traitement && (
-                <p className="text-[11px] leading-snug text-slate-500 italic">{regle.meilleure.traitement}</p>
-              )}
             </div>
           </div>
 
@@ -199,22 +187,27 @@ export default function ReglePersonnelleCard({ dog }: Props) {
             </div>
           )}
 
-          {!isVet && (
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-fit py-2 text-xs"
-              onClick={() => setSheetOuverte(true)}
-            >
-              Modifier mes repères de départ
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" className="w-fit py-2 text-xs" onClick={() => setDetailOuvert(true)}>
+              Voir le détail
             </Button>
-          )}
+            {!isVet && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-fit py-2 text-xs"
+                onClick={() => setSheetOuverte(true)}
+              >
+                Modifier mes repères de départ
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
       <p className="px-1 text-xs leading-snug text-slate-400">
         {regle.toutCalcule
-          ? 'Les deux bornes et les repères de crise sont calculés à partir des vraies saisies enregistrées.'
+          ? 'Les deux bornes sont calculées à partir des vraies saisies enregistrées.'
           : `Repères de départ déclarés à la main : la règle se recalibrera automatiquement dès que l’historique réel de ${dog.name} sera assez fourni.`}
       </p>
 
@@ -228,6 +221,16 @@ export default function ReglePersonnelleCard({ dog }: Props) {
             setSheetOuverte(false)
             setRefreshSignal((n) => n + 1)
           }}
+        />
+      )}
+
+      {detailOuvert && (
+        <RegleDetailSheet
+          dogName={dog.name}
+          regle={regle}
+          crises={crises}
+          absences={absences}
+          onClose={() => setDetailOuvert(false)}
         />
       )}
     </>
