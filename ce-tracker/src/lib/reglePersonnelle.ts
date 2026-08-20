@@ -75,10 +75,9 @@ function normaliserScoreFecal(score: number): number {
 /** Sévérité moyenne d'une journée : une seule note qui agrège tout ce qui a
  * été saisi ce jour-là — score fécal, vomissements, et chaque symptôme du
  * journal (coté ou simplement constaté) — plutôt que de ne retenir que le
- * score fécal et les vomissements. Une journée saisie sans aucun signe
- * compte comme une observation à 0, au même titre que les autres : c'est ce
- * qui fait baisser la moyenne d'une vraie période calme plutôt que de
- * simplement l'ignorer. */
+ * score fécal et les vomissements. N'est appelée que sur des jours déjà
+ * retenus par joursObserves (au moins un vrai signal digestif) : le repli à
+ * 0 ci-dessous est une garde défensive, pas un cas normal. */
 function graviteJournaliere(entry: DailyEntry | undefined, evenementsJour: SuiviEvent[]): number {
   const echantillons: number[] = []
 
@@ -97,17 +96,20 @@ function graviteJournaliere(entry: DailyEntry | undefined, evenementsJour: Suivi
   return echantillons.length > 0 ? echantillons.reduce((a, b) => a + b, 0) / echantillons.length : 0
 }
 
-/** Un jour compte comme observé pour la règle personnelle dès qu'il porte un
- * vrai signal de symptôme — une entrée quotidienne (bilan, vomissements
- * inclus) ou un événement selle/symptôme du journal — pas seulement les
- * jours où le bilan a été rempli. Beaucoup de propriétaires suivent surtout
- * via le journal au fil de l'eau plutôt que via le bilan quotidien : s'en
- * tenir aux seules entrées sous-comptait largement l'historique réel. Un
- * repas, une activité ou une note seuls ne suffisent pas : ce ne sont pas
- * des observations de symptôme. */
+/** Un jour compte comme observé pour la règle personnelle seulement s'il
+ * porte un vrai signal digestif : un score fécal (bilan ou selle), au moins
+ * un vomissement, ou un événement selle/symptôme du journal. Un bilan
+ * quotidien enregistré sans score fécal ni vomissement (seuls appétit/
+ * énergie/notes renseignés) ne prouve rien sur l'état digestif de ce
+ * jour-là : le compter comme calme aurait faussé la moyenne d'une vraie
+ * période calme avec des jours simplement pas renseignés. Un repas, une
+ * activité ou une note seuls ne suffisent pas non plus. */
 function joursObserves(debut: string, fin: string, entries: DailyEntry[], events: SuiviEvent[]): Set<string> {
   const jours = new Set<string>()
-  for (const e of entries) if (e.date >= debut && e.date <= fin) jours.add(e.date)
+  for (const e of entries) {
+    if (e.date < debut || e.date > fin) continue
+    if (e.score_fecal !== null || e.vomissements_count > 0) jours.add(e.date)
+  }
   for (const e of events) {
     if (e.type !== 'selle' && e.type !== 'symptome') continue
     const j = jourDe(e.at)
