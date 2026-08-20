@@ -86,6 +86,11 @@ export default function MedicationsScreen({ dogId }: Props) {
               {!medication.actif && (
                 <p className="mt-1 text-xs font-medium text-slate-500">Inactif</p>
               )}
+              {!medication.pertinent_digestif && (
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Non lié à la digestion — exclu du repère personnel
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -166,6 +171,7 @@ function MedicationSheet({
   const [customName, setCustomName] = useState(isCustom ? (medication?.nom_medicament ?? '') : '')
   const [dose, setDose] = useState(medication?.dose ?? '')
   const [heure, setHeure] = useState(formatTime(medication?.heure_prise ?? null) ?? '')
+  const [pertinentDigestif, setPertinentDigestif] = useState(medication?.pertinent_digestif ?? true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -185,6 +191,7 @@ function MedicationSheet({
       nom_medicament: nom,
       dose: dose.trim() || null,
       heure_prise: heure || null,
+      pertinent_digestif: pertinentDigestif,
     }
 
     const { error: dbError } = medication
@@ -245,6 +252,22 @@ function MedicationSheet({
             className={inputClass}
           />
         </Field>
+
+        <label className="flex items-start gap-2.5 rounded-xl bg-slate-50 p-3">
+          <input
+            type="checkbox"
+            checked={pertinentDigestif}
+            onChange={(e) => setPertinentDigestif(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-700"
+          />
+          <span className="text-sm text-slate-700">
+            Lié à la digestion
+            <span className="mt-0.5 block text-xs text-slate-500">
+              À décocher pour un traitement de fond sans rapport avec l’entéropathie (ex. anxiolytique) :
+              il n’apparaîtra pas comme contexte de traitement sur le repère personnel.
+            </span>
+          </span>
+        </label>
 
         <ErrorMessage>{error}</ErrorMessage>
 

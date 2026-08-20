@@ -88,6 +88,10 @@ export type DogMedication = {
   dose: string | null
   heure_prise: string | null
   actif: boolean
+  /** false pour un traitement de fond sans rapport avec l'entéropathie (ex.
+   * anxiolytique) : exclu du contexte de traitement affiché sur le repère
+   * personnel, qui ne concerne que la digestion. */
+  pertinent_digestif: boolean
 }
 
 export type Appetit = 'faible' | 'normal' | 'bon'
