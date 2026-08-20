@@ -61,16 +61,16 @@ function normaliserScoreFecal(score: number): number {
  * compte comme une observation à 0, au même titre que les autres : c'est ce
  * qui fait baisser la moyenne d'une vraie période calme plutôt que de
  * simplement l'ignorer. */
-function graviteJournaliere(entry: DailyEntry, evenementsJour: SuiviEvent[]): number {
+function graviteJournaliere(entry: DailyEntry | undefined, evenementsJour: SuiviEvent[]): number {
   const echantillons: number[] = []
 
   const scoresSelle = evenementsJour
     .filter((e) => e.type === 'selle' && e.intensite !== null)
     .map((e) => e.intensite as number)
-  const scoreFecal = scoresSelle.length > 0 ? Math.max(...scoresSelle) : entry.score_fecal
+  const scoreFecal = scoresSelle.length > 0 ? Math.max(...scoresSelle) : (entry?.score_fecal ?? null)
   if (scoreFecal !== null) echantillons.push(normaliserScoreFecal(scoreFecal))
 
-  for (let i = 0; i < entry.vomissements_count; i++) echantillons.push(POIDS_VOMISSEMENT)
+  for (let i = 0; i < (entry?.vomissements_count ?? 0); i++) echantillons.push(POIDS_VOMISSEMENT)
 
   for (const e of evenementsJour) {
     if (e.type === 'symptome') echantillons.push(e.intensite ?? POIDS_SYMPTOME_BINAIRE)
@@ -79,25 +79,45 @@ function graviteJournaliere(entry: DailyEntry, evenementsJour: SuiviEvent[]): nu
   return echantillons.length > 0 ? echantillons.reduce((a, b) => a + b, 0) / echantillons.length : 0
 }
 
+/** Un jour compte comme observé pour la règle personnelle dès qu'il porte un
+ * vrai signal de symptôme — une entrée quotidienne (bilan, vomissements
+ * inclus) ou un événement selle/symptôme du journal — pas seulement les
+ * jours où le bilan a été rempli. Beaucoup de propriétaires suivent surtout
+ * via le journal au fil de l'eau plutôt que via le bilan quotidien : s'en
+ * tenir aux seules entrées sous-comptait largement l'historique réel. Un
+ * repas, une activité ou une note seuls ne suffisent pas : ce ne sont pas
+ * des observations de symptôme. */
+function joursObserves(debut: string, fin: string, entries: DailyEntry[], events: SuiviEvent[]): Set<string> {
+  const jours = new Set<string>()
+  for (const e of entries) if (e.date >= debut && e.date <= fin) jours.add(e.date)
+  for (const e of events) {
+    if (e.type !== 'selle' && e.type !== 'symptome') continue
+    const j = jourDe(e.at)
+    if (j >= debut && j <= fin) jours.add(j)
+  }
+  return jours
+}
+
 /** Sévérité moyenne d'une fenêtre [debut, fin] : la moyenne des sévérités
- * journalières de chaque jour saisi (voir graviteJournaliere) — pas
- * seulement des jours de crise déclarée. joursCouverts compte les jours
- * avec une entrée quotidienne, seuil de fiabilité du calcul. */
+ * journalières de chaque jour observé (voir graviteJournaliere et
+ * joursObserves) — pas seulement des jours de crise déclarée. joursCouverts
+ * sert de seuil de fiabilité du calcul. */
 function graviteFenetre(
   debut: string,
   fin: string,
   entries: DailyEntry[],
   events: SuiviEvent[],
 ): { indice: number | null; joursCouverts: number } {
-  const entriesFenetre = entries.filter((e) => e.date >= debut && e.date <= fin)
-  if (entriesFenetre.length === 0) return { indice: null, joursCouverts: 0 }
-  const valeurs = entriesFenetre.map((entry) =>
+  const jours = joursObserves(debut, fin, entries, events)
+  if (jours.size === 0) return { indice: null, joursCouverts: 0 }
+  const entriesParDate = new Map(entries.map((e) => [e.date, e]))
+  const valeurs = [...jours].map((date) =>
     graviteJournaliere(
-      entry,
-      events.filter((e) => jourDe(e.at) === entry.date),
+      entriesParDate.get(date),
+      events.filter((e) => jourDe(e.at) === date),
     ),
   )
-  return { indice: valeurs.reduce((a, b) => a + b, 0) / valeurs.length, joursCouverts: entriesFenetre.length }
+  return { indice: valeurs.reduce((a, b) => a + b, 0) / valeurs.length, joursCouverts: jours.size }
 }
 
 function semaineDebut(date: string): string {
@@ -176,7 +196,15 @@ export function construireReglePersonnelle(
   // semaine qui chevauche une crise déclarée n'est en plus jamais retenue
   // comme meilleure période.
   const candidats: { indice: number; debut: string; chevaucheCrise: boolean }[] = []
-  const semaines = new Set(entries.map((e) => semaineDebut(e.date)))
+  // Une semaine peut n'exister que via des événements journal (selle,
+  // symptôme) sans aucun bilan quotidien rempli : elle doit quand même
+  // pouvoir devenir candidate, au même titre que joursObserves ci-dessus.
+  const semaines = new Set([
+    ...entries.map((e) => semaineDebut(e.date)),
+    ...events
+      .filter((e) => e.type === 'selle' || e.type === 'symptome')
+      .map((e) => semaineDebut(jourDe(e.at))),
+  ])
   for (const debut of semaines) {
     const fin = ajouterJours(debut, 6)
     const chevaucheAbsence = absences.some((a) => a.date_debut <= fin && (a.date_fin ?? aujourdhui) >= debut)
