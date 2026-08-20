@@ -128,7 +128,7 @@ function medicamentsAutourDe(
 }
 
 function medicamentsActifsMaintenant(medications: DogMedication[]): string | null {
-  const noms = medications.filter((m) => m.actif).map((m) => m.nom_medicament)
+  const noms = [...new Set(medications.filter((m) => m.actif).map((m) => m.nom_medicament))]
   return noms.length > 0 ? noms.join(' + ') : null
 }
 
@@ -163,6 +163,11 @@ export function construireReglePersonnelle(
   repereDeclare: RepereesPersonnels | null,
   aujourdhui: string = todayISO(),
 ): ReglePersonnelle | null {
+  // Seuls les traitements liés à la digestion apparaissent comme contexte de
+  // la règle : un traitement de fond sans rapport avec l'entéropathie (ex.
+  // anxiolytique) n'a rien à faire dans la lecture du repère personnel.
+  const medicationsDigestives = medications.filter((m) => m.pertinent_digestif)
+
   // Pire épisode et meilleure période calculés de la même façon, à partir de
   // la sévérité moyenne réelle (tous les symptômes saisis, pas seulement les
   // crises déclarées) : parmi les semaines d'au moins 4 jours saisis, celle
@@ -192,7 +197,7 @@ export function construireReglePersonnelle(
     ? {
         indice: pireCalculee.indice,
         label: `Semaine du ${formatLongDate(pireCalculee.debut)}`,
-        traitement: medicamentsAutourDe(pireCalculee.debut, medications, traitementEvents),
+        traitement: medicamentsAutourDe(pireCalculee.debut, medicationsDigestives, traitementEvents),
         alimentation: alimentationLe(pireCalculee.debut, foodEntries),
         declare: false,
       }
@@ -212,7 +217,7 @@ export function construireReglePersonnelle(
     ? {
         indice: meilleureCalculee.indice,
         label: `Semaine du ${formatLongDate(meilleureCalculee.debut)}`,
-        traitement: medicamentsAutourDe(meilleureCalculee.debut, medications, traitementEvents),
+        traitement: medicamentsAutourDe(meilleureCalculee.debut, medicationsDigestives, traitementEvents),
         alimentation: alimentationLe(meilleureCalculee.debut, foodEntries),
         declare: false,
       }
@@ -256,7 +261,7 @@ export function construireReglePersonnelle(
     meilleure: meilleureFinal,
     position: position(pireFinal.indice, meilleureFinal.indice, indiceActuel),
     aujourdhui: {
-      traitement: medicamentsActifsMaintenant(medications),
+      traitement: medicamentsActifsMaintenant(medicationsDigestives),
       alimentation: alimentationLe(aujourdhui, foodEntries),
     },
     crises: crisesTicks,
