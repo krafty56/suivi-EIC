@@ -267,6 +267,24 @@ export type FoodEntry = {
   note: string | null
 }
 
+export type Vomissements = 'jamais' | 'parfois' | 'souvent'
+
+/** Repères déclarés à la main par le propriétaire (pire épisode / meilleure
+ * période avant l'usage de l'app, ou tant que l'historique réel est trop
+ * court) : bornes de départ de la règle personnelle, une ligne par chien. */
+export type RepereesPersonnels = {
+  dog_id: string
+  pire_score_fecal: number
+  pire_vomissements: Vomissements
+  pire_traitement: string | null
+  pire_alimentation: string | null
+  meilleur_score_fecal: number
+  meilleur_vomissements: Vomissements
+  meilleur_traitement: string | null
+  meilleur_alimentation: string | null
+  updated_at: string
+}
+
 export type Veterinaire = {
   id: string
   dog_id: string

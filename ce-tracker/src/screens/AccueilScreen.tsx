@@ -39,6 +39,7 @@ import { Verrou } from '../components/Verrou'
 import AbsenceSheet from './AbsenceSheet'
 import CrisisSheet from './CrisisSheet'
 import QualiteVieSheet from './QualiteVieSheet'
+import ReglePersonnelleCard from './ReglePersonnelleCard'
 
 type Props = { dog: Dog }
 
@@ -282,6 +283,8 @@ export default function AccueilScreen({ dog }: Props) {
           )}
         </Card>
       )}
+
+      <ReglePersonnelleCard dog={dog} />
 
       {alertes.length > 0 && !isPremium && (
         <Verrou
