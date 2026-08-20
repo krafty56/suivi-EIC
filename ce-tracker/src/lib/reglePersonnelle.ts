@@ -175,8 +175,7 @@ export function construireReglePersonnelle(
   // absence est écartée des deux côtés (observation non fiable) ; une
   // semaine qui chevauche une crise déclarée n'est en plus jamais retenue
   // comme meilleure période.
-  let pireCalculee: { indice: number; debut: string } | null = null
-  let meilleureCalculee: { indice: number; debut: string } | null = null
+  const candidats: { indice: number; debut: string; chevaucheCrise: boolean }[] = []
   const semaines = new Set(entries.map((e) => semaineDebut(e.date)))
   for (const debut of semaines) {
     const fin = ajouterJours(debut, 6)
@@ -186,11 +185,36 @@ export function construireReglePersonnelle(
     const { indice, joursCouverts } = graviteFenetre(debut, fin, entries, events)
     if (indice === null || joursCouverts < 4) continue
 
-    if (!pireCalculee || indice > pireCalculee.indice) pireCalculee = { indice, debut }
-
     const chevaucheCrise = crises.some((c) => c.date_debut <= fin && (c.date_fin ?? aujourdhui) >= debut)
-    if (chevaucheCrise) continue
-    if (!meilleureCalculee || indice < meilleureCalculee.indice) meilleureCalculee = { indice, debut }
+    candidats.push({ indice, debut, chevaucheCrise })
+  }
+
+  function extremum(
+    liste: { indice: number; debut: string }[],
+    sens: 'max' | 'min',
+  ): { indice: number; debut: string } | null {
+    return liste.reduce<{ indice: number; debut: string } | null>((acc, c) => {
+      if (!acc) return c
+      const meilleurCandidat = sens === 'max' ? c.indice > acc.indice : c.indice < acc.indice
+      return meilleurCandidat ? c : acc
+    }, null)
+  }
+
+  let pireCalculee = extremum(candidats, 'max')
+  let meilleureCalculee = extremum(
+    candidats.filter((c) => !c.chevaucheCrise),
+    'min',
+  )
+  // Les deux bornes ne peuvent pas venir de la même semaine : ce serait
+  // afficher une seule vraie donnée comme s'il s'agissait de deux extrêmes
+  // distincts. S'il n'existe pas encore de deuxième semaine utilisable, on
+  // laisse le pire tenir la seule donnée réelle et on rabat la meilleure sur
+  // le repère déclaré (ou sur l'invite à en déclarer un).
+  if (pireCalculee && meilleureCalculee && pireCalculee.debut === meilleureCalculee.debut) {
+    meilleureCalculee = extremum(
+      candidats.filter((c) => !c.chevaucheCrise && c.debut !== pireCalculee!.debut),
+      'min',
+    )
   }
 
   const pire: PointRepere | null = pireCalculee
