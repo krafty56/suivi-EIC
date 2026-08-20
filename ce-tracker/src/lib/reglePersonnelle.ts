@@ -1,6 +1,6 @@
 import { formatLongDate, todayISO } from './date'
 import { jourDe } from './journal'
-import { ajouterJours, statsFenetre, type StatsFenetre } from './reponseTraitement'
+import { ajouterJours } from './reponseTraitement'
 import type {
   Absence,
   Crise,
@@ -13,7 +13,8 @@ import type {
 } from './types'
 
 /** Un point de repère sur la règle : soit calculé à partir d'un vrai épisode
- * (crise, semaine calme), soit déclaré à la main faute d'historique suffisant. */
+ * (semaine la plus sévère ou la plus calme de l'historique), soit déclaré à
+ * la main faute d'historique suffisant. */
 export type PointRepere = {
   indice: number
   label: string
@@ -28,27 +29,75 @@ export type ReglePersonnelle = {
   /** 0 = au niveau du pire épisode, 100 = au niveau de la meilleure période. */
   position: number
   aujourdhui: { traitement: string | null; alimentation: string | null }
-  /** Crises passées à marquer discrètement sur la règle, hors celle déjà
-   * représentée par le point « pire ». */
+  /** Crises passées à marquer discrètement sur la règle, pour situer le
+   * pire épisode calculé par rapport à ce qui a été déclaré en crise. */
   crises: { id: string; label: string; position: number }[]
   /** false si au moins un des deux points vient d'une déclaration manuelle
    * plutôt que d'un vrai épisode enregistré. */
   toutCalcule: boolean
 }
 
-const PROXY_VOMISSEMENTS: Record<Vomissements, number> = { jamais: 0, parfois: 0.3, souvent: 1.5 }
+/** Poids d'un symptôme simplement constaté (sans cotation 1-3) dans la
+ * moyenne du jour : une valeur neutre, au milieu de l'échelle léger/modéré/
+ * marqué utilisée pour les symptômes cotés. */
+const POIDS_SYMPTOME_BINAIRE = 2
+/** Un vomissement compte toujours comme un signe marqué, quelle que soit sa
+ * fréquence ce jour-là. */
+const POIDS_VOMISSEMENT = 3
+const GRAVITE_VOMISSEMENTS_DECLARES: Record<Vomissements, number> = { jamais: 0, parfois: 1.5, souvent: 3 }
 
-/** Un seul nombre continu résumant la sévérité d'une fenêtre : le score
- * fécal (échelle de Purina, 1 à 7) domine, les vomissements l'aggravent.
- * Ce n'est pas un indice clinique reconnu — juste de quoi ordonner les
- * épisodes d'un même chien entre eux pour les placer sur la règle. */
-function indiceGravite(scoreFecal: number, vomissementsParJour: number): number {
-  return scoreFecal + vomissementsParJour * 2
+/** Ramène le score fécal (échelle de Purina, 1 à 7) sur la même échelle 0-3
+ * que les symptômes cotés : 2 (bien formée) sert de référence saine, 7
+ * (liquide) vaut la sévérité maximale. Un score 1 (très dure) n'est pas
+ * traité comme un problème digestif au même titre qu'une diarrhée. */
+function normaliserScoreFecal(score: number): number {
+  return Math.max(0, ((score - 2) / 5) * 3)
 }
 
-function indiceGraviteFenetre(stats: StatsFenetre): number | null {
-  if (stats.joursCouverts === 0) return null
-  return indiceGravite(stats.scoreMoyen ?? 1, stats.vomissements / stats.joursCouverts)
+/** Sévérité moyenne d'une journée : une seule note qui agrège tout ce qui a
+ * été saisi ce jour-là — score fécal, vomissements, et chaque symptôme du
+ * journal (coté ou simplement constaté) — plutôt que de ne retenir que le
+ * score fécal et les vomissements. Une journée saisie sans aucun signe
+ * compte comme une observation à 0, au même titre que les autres : c'est ce
+ * qui fait baisser la moyenne d'une vraie période calme plutôt que de
+ * simplement l'ignorer. */
+function graviteJournaliere(entry: DailyEntry, evenementsJour: SuiviEvent[]): number {
+  const echantillons: number[] = []
+
+  const scoresSelle = evenementsJour
+    .filter((e) => e.type === 'selle' && e.intensite !== null)
+    .map((e) => e.intensite as number)
+  const scoreFecal = scoresSelle.length > 0 ? Math.max(...scoresSelle) : entry.score_fecal
+  if (scoreFecal !== null) echantillons.push(normaliserScoreFecal(scoreFecal))
+
+  for (let i = 0; i < entry.vomissements_count; i++) echantillons.push(POIDS_VOMISSEMENT)
+
+  for (const e of evenementsJour) {
+    if (e.type === 'symptome') echantillons.push(e.intensite ?? POIDS_SYMPTOME_BINAIRE)
+  }
+
+  return echantillons.length > 0 ? echantillons.reduce((a, b) => a + b, 0) / echantillons.length : 0
+}
+
+/** Sévérité moyenne d'une fenêtre [debut, fin] : la moyenne des sévérités
+ * journalières de chaque jour saisi (voir graviteJournaliere) — pas
+ * seulement des jours de crise déclarée. joursCouverts compte les jours
+ * avec une entrée quotidienne, seuil de fiabilité du calcul. */
+function graviteFenetre(
+  debut: string,
+  fin: string,
+  entries: DailyEntry[],
+  events: SuiviEvent[],
+): { indice: number | null; joursCouverts: number } {
+  const entriesFenetre = entries.filter((e) => e.date >= debut && e.date <= fin)
+  if (entriesFenetre.length === 0) return { indice: null, joursCouverts: 0 }
+  const valeurs = entriesFenetre.map((entry) =>
+    graviteJournaliere(
+      entry,
+      events.filter((e) => jourDe(e.at) === entry.date),
+    ),
+  )
+  return { indice: valeurs.reduce((a, b) => a + b, 0) / valeurs.length, joursCouverts: entriesFenetre.length }
 }
 
 function semaineDebut(date: string): string {
@@ -56,10 +105,6 @@ function semaineDebut(date: string): string {
   const jourISO = (d.getDay() + 6) % 7 // 0 = lundi
   d.setDate(d.getDate() - jourISO)
   return d.toISOString().slice(0, 10)
-}
-
-function moisAnnee(date: string): string {
-  return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date(`${date}T00:00:00`))
 }
 
 /** Noms des médicaments avec au moins une prise enregistrée à quelques jours
@@ -118,46 +163,44 @@ export function construireReglePersonnelle(
   repereDeclare: RepereesPersonnels | null,
   aujourdhui: string = todayISO(),
 ): ReglePersonnelle | null {
-  // Pire épisode calculé : parmi les crises réelles, celle à l'indice moyen
-  // le plus élevé sur sa propre durée.
-  let pireCalcule: { id: string; indice: number; date: string } | null = null
-  for (const crise of crises) {
-    const fin = crise.date_fin ?? aujourdhui
-    const stats = statsFenetre(crise.date_debut, fin, entries, events, crises)
-    const indice = indiceGraviteFenetre(stats)
-    if (indice === null) continue
-    if (!pireCalcule || indice > pireCalcule.indice) pireCalcule = { id: crise.id, indice, date: crise.date_debut }
-  }
-
-  // Meilleure période calculée : parmi les semaines qui ne chevauchent ni
-  // crise ni absence et comptent au moins 4 jours saisis, celle à l'indice
-  // moyen le plus bas.
+  // Pire épisode et meilleure période calculés de la même façon, à partir de
+  // la sévérité moyenne réelle (tous les symptômes saisis, pas seulement les
+  // crises déclarées) : parmi les semaines d'au moins 4 jours saisis, celle
+  // à l'indice le plus haut / le plus bas. Une semaine qui chevauche une
+  // absence est écartée des deux côtés (observation non fiable) ; une
+  // semaine qui chevauche une crise déclarée n'est en plus jamais retenue
+  // comme meilleure période.
+  let pireCalculee: { indice: number; debut: string } | null = null
   let meilleureCalculee: { indice: number; debut: string } | null = null
   const semaines = new Set(entries.map((e) => semaineDebut(e.date)))
   for (const debut of semaines) {
     const fin = ajouterJours(debut, 6)
-    const chevaucheEpisode =
-      crises.some((c) => c.date_debut <= fin && (c.date_fin ?? aujourdhui) >= debut) ||
-      absences.some((a) => a.date_debut <= fin && (a.date_fin ?? aujourdhui) >= debut)
-    if (chevaucheEpisode) continue
-    const stats = statsFenetre(debut, fin, entries, events, crises)
-    if (stats.joursCouverts < 4) continue
-    const indice = indiceGraviteFenetre(stats)
-    if (indice === null) continue
+    const chevaucheAbsence = absences.some((a) => a.date_debut <= fin && (a.date_fin ?? aujourdhui) >= debut)
+    if (chevaucheAbsence) continue
+
+    const { indice, joursCouverts } = graviteFenetre(debut, fin, entries, events)
+    if (indice === null || joursCouverts < 4) continue
+
+    if (!pireCalculee || indice > pireCalculee.indice) pireCalculee = { indice, debut }
+
+    const chevaucheCrise = crises.some((c) => c.date_debut <= fin && (c.date_fin ?? aujourdhui) >= debut)
+    if (chevaucheCrise) continue
     if (!meilleureCalculee || indice < meilleureCalculee.indice) meilleureCalculee = { indice, debut }
   }
 
-  const pire: PointRepere | null = pireCalcule
+  const pire: PointRepere | null = pireCalculee
     ? {
-        indice: pireCalcule.indice,
-        label: formatLongDate(pireCalcule.date),
-        traitement: medicamentsAutourDe(pireCalcule.date, medications, traitementEvents),
-        alimentation: alimentationLe(pireCalcule.date, foodEntries),
+        indice: pireCalculee.indice,
+        label: `Semaine du ${formatLongDate(pireCalculee.debut)}`,
+        traitement: medicamentsAutourDe(pireCalculee.debut, medications, traitementEvents),
+        alimentation: alimentationLe(pireCalculee.debut, foodEntries),
         declare: false,
       }
     : repereDeclare
       ? {
-          indice: indiceGravite(repereDeclare.pire_score_fecal, PROXY_VOMISSEMENTS[repereDeclare.pire_vomissements]),
+          indice: (normaliserScoreFecal(repereDeclare.pire_score_fecal) +
+            GRAVITE_VOMISSEMENTS_DECLARES[repereDeclare.pire_vomissements]) /
+            2,
           label: 'Avant l’app',
           traitement: repereDeclare.pire_traitement,
           alimentation: repereDeclare.pire_alimentation,
@@ -168,17 +211,16 @@ export function construireReglePersonnelle(
   const meilleure: PointRepere | null = meilleureCalculee
     ? {
         indice: meilleureCalculee.indice,
-        label: moisAnnee(meilleureCalculee.debut),
+        label: `Semaine du ${formatLongDate(meilleureCalculee.debut)}`,
         traitement: medicamentsAutourDe(meilleureCalculee.debut, medications, traitementEvents),
         alimentation: alimentationLe(meilleureCalculee.debut, foodEntries),
         declare: false,
       }
     : repereDeclare
       ? {
-          indice: indiceGravite(
-            repereDeclare.meilleur_score_fecal,
-            PROXY_VOMISSEMENTS[repereDeclare.meilleur_vomissements],
-          ),
+          indice: (normaliserScoreFecal(repereDeclare.meilleur_score_fecal) +
+            GRAVITE_VOMISSEMENTS_DECLARES[repereDeclare.meilleur_vomissements]) /
+            2,
           label: 'Avant l’app',
           traitement: repereDeclare.meilleur_traitement,
           alimentation: repereDeclare.meilleur_alimentation,
@@ -191,16 +233,15 @@ export function construireReglePersonnelle(
   // Le pire doit rester au moins aussi sévère que la meilleure ; si des
   // repères déclarés sont entrés à l'envers, on les échange plutôt que
   // d'afficher une règle inversée.
-  let [pireFinal, meilleureFinal] = pire.indice >= meilleure.indice ? [pire, meilleure] : [meilleure, pire]
+  const [pireFinal, meilleureFinal] = pire.indice >= meilleure.indice ? [pire, meilleure] : [meilleure, pire]
 
-  const statsAujourdhui = statsFenetre(ajouterJours(aujourdhui, -6), aujourdhui, entries, events, crises)
-  const indiceActuel = indiceGraviteFenetre(statsAujourdhui) ?? (pireFinal.indice + meilleureFinal.indice) / 2
+  const statsAujourdhui = graviteFenetre(ajouterJours(aujourdhui, -6), aujourdhui, entries, events)
+  const indiceActuel = statsAujourdhui.indice ?? (pireFinal.indice + meilleureFinal.indice) / 2
 
   const crisesTicks = crises
-    .filter((c) => c.id !== pireCalcule?.id)
     .map((c) => {
       const fin = c.date_fin ?? aujourdhui
-      const indice = indiceGraviteFenetre(statsFenetre(c.date_debut, fin, entries, events, crises))
+      const { indice } = graviteFenetre(c.date_debut, fin, entries, events)
       if (indice === null) return null
       return {
         id: c.id,
