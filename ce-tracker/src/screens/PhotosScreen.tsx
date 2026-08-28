@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
+import { pdf } from '@react-pdf/renderer'
 import { supabase } from '../lib/supabase'
-import type { SuiviEvent } from '../lib/types'
+import type { Dog, SuiviEvent } from '../lib/types'
 import { resumeDetailsEvenement } from '../data/catalogs'
-import { formatLongDate, heureDe, todayISO } from '../lib/date'
+import { formatLongDate, formatShortDate, heureDe, todayISO } from '../lib/date'
 import { jourDe } from '../lib/journal'
 import { usePremium } from '../lib/premium'
 import { stoolPhotoUrl } from '../lib/storage'
-import { Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
+import PhotosPdf, { type PhotoPdfItem } from '../lib/pdf/PhotosPdf'
+import { redimensionnerPourPdf } from '../lib/pdf/prepareImage'
+import { Button, Card, ErrorMessage, Sheet, Spinner } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 
-type Props = { dogId: string }
+type Props = { dog: Dog }
 
 const PERIODES: { jours: number | null; label: string }[] = [
   { jours: 30, label: '30 j' },
@@ -29,12 +32,13 @@ function reculerDe(date: string, jours: number): string {
 
 /** Toutes les photos de selle, en grille, pour repasser en revue visuellement
  * une période plutôt que de rouvrir chaque entrée une à une. */
-export default function PhotosScreen({ dogId }: Props) {
+export default function PhotosScreen({ dog }: Props) {
   const { isPremium } = usePremium()
   const [periodeJours, setPeriodeJours] = useState<number | null>(90)
   const [photos, setPhotos] = useState<SuiviEvent[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [zoomed, setZoomed] = useState<SuiviEvent | null>(null)
+  const [genereBusy, setGenereBusy] = useState(false)
 
   useEffect(() => {
     setPhotos(null)
@@ -42,7 +46,7 @@ export default function PhotosScreen({ dogId }: Props) {
       let requete = supabase
         .from('events')
         .select('*')
-        .eq('dog_id', dogId)
+        .eq('dog_id', dog.id)
         .eq('type', 'selle')
         .not('storage_path', 'is', null)
         .order('at', { ascending: false })
@@ -58,26 +62,74 @@ export default function PhotosScreen({ dogId }: Props) {
       else setPhotos(data as SuiviEvent[])
     }
     void load()
-  }, [dogId, periodeJours])
+  }, [dog.id, periodeJours])
+
+  const photosVisibles = photos !== null ? (isPremium ? photos : photos.slice(0, LIMITE_GRATUITE)) : []
+
+  /** Génère un PDF de la galerie (dates + score fécal) — les images sont
+   * redimensionnées côté client avant d'être intégrées, sans quoi une
+   * centaine de photos à pleine résolution rendrait l'export interminable. */
+  async function telechargerPdf() {
+    setError(null)
+    setGenereBusy(true)
+    try {
+      const items: PhotoPdfItem[] = await Promise.all(
+        photosVisibles.map(async (event) => ({
+          id: event.id,
+          dataUrl: await redimensionnerPourPdf(stoolPhotoUrl(event.storage_path!)),
+          date: formatShortDate(jourDe(event.at)),
+          score: event.intensite,
+        })),
+      )
+      const periodeLabel = periodeJours === null ? 'Toutes les photos' : `${periodeJours} derniers jours`
+      const blob = await pdf(
+        <PhotosPdf dogName={dog.name} periodeLabel={periodeLabel} photos={items} genereLe={formatShortDate(todayISO())} />,
+      ).toBlob()
+      const nomFichier = `${dog.name.replace(/[^a-zA-Z0-9-]+/g, '-')}-photos-selles.pdf`
+      const url = URL.createObjectURL(blob)
+      const lien = document.createElement('a')
+      lien.href = url
+      lien.download = nomFichier
+      lien.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('La génération du PDF a échoué. Réessaie.')
+    } finally {
+      setGenereBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-3 p-4">
-      <div className="flex gap-2 overflow-x-auto">
-        {PERIODES.map((periode) => (
-          <button
-            key={periode.label}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2 overflow-x-auto">
+          {PERIODES.map((periode) => (
+            <button
+              key={periode.label}
+              type="button"
+              aria-pressed={periodeJours === periode.jours}
+              onClick={() => setPeriodeJours(periode.jours)}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                periodeJours === periode.jours
+                  ? 'bg-brand-700 text-white'
+                  : 'bg-white text-slate-700 ring-1 ring-slate-200'
+              }`}
+            >
+              {periode.label}
+            </button>
+          ))}
+        </div>
+        {isPremium && photosVisibles.length > 0 && (
+          <Button
             type="button"
-            aria-pressed={periodeJours === periode.jours}
-            onClick={() => setPeriodeJours(periode.jours)}
-            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-              periodeJours === periode.jours
-                ? 'bg-brand-700 text-white'
-                : 'bg-white text-slate-700 ring-1 ring-slate-200'
-            }`}
+            variant="secondary"
+            className="shrink-0 py-2 text-xs"
+            disabled={genereBusy}
+            onClick={() => void telechargerPdf()}
           >
-            {periode.label}
-          </button>
-        ))}
+            {genereBusy ? 'Génération…' : 'PDF'}
+          </Button>
+        )}
       </div>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -91,7 +143,7 @@ export default function PhotosScreen({ dogId }: Props) {
       ) : (
         <>
           <div className="grid grid-cols-3 gap-1">
-            {(isPremium ? photos : photos.slice(0, LIMITE_GRATUITE)).map((event) => (
+            {photosVisibles.map((event) => (
               <button
                 key={event.id}
                 type="button"
