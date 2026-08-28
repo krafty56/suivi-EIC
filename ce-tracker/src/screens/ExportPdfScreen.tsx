@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { pdf } from '@react-pdf/renderer'
 import { supabase } from '../lib/supabase'
 import type { Absence, Crise, DailyEntry, Dog, DogMedication, FoodEntry, SuiviEvent, Weight } from '../lib/types'
 import { BCS_SCALE } from '../data/catalogs'
 import { calculerAge, formatLongDate, formatShortDate, formatTime, todayISO, veilleDe } from '../lib/date'
 import { construireJours } from '../lib/journal'
+import JournalPdf from '../lib/pdf/JournalPdf'
 import { Button, Card, ErrorMessage, Field, Spinner, inputClass } from '../components/ui'
 import JourCard from '../components/JourCard'
 import Logo from '../components/Logo'
@@ -45,6 +47,7 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
   const [poids, setPoids] = useState<Weight[]>([])
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [genereBusy, setGenereBusy] = useState(false)
 
   function choisirPreset(jours: number) {
     setPresetActif(jours)
@@ -129,6 +132,40 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
 
   const actifs = medications.filter((m) => m.actif)
 
+  /** Génère un vrai fichier PDF côté client (react-pdf) et déclenche son
+   * téléchargement — indépendant de la boîte de dialogue d'impression du
+   * navigateur, qui peut rester bloquée sur certains appareils (PWA iOS
+   * notamment). */
+  async function telechargerPdf() {
+    setError(null)
+    setGenereBusy(true)
+    try {
+      const blob = await pdf(
+        <JournalPdf
+          dog={dog}
+          debut={debut}
+          fin={fin}
+          jours={jours}
+          medicationsActives={actifs}
+          foodEntries={foodEntries}
+          repas={repasEvents}
+          genereLe={formatShortDate(todayISO())}
+        />,
+      ).toBlob()
+      const nomFichier = `${dog.name.replace(/[^a-zA-Z0-9-]+/g, '-')}-journal-${debut}-au-${fin}.pdf`
+      const url = URL.createObjectURL(blob)
+      const lien = document.createElement('a')
+      lien.href = url
+      lien.download = nomFichier
+      lien.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('La génération du PDF a échoué. Réessaie.')
+    } finally {
+      setGenereBusy(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 print:max-w-none print:p-0">
       <header className="space-y-3 print:hidden">
@@ -156,8 +193,14 @@ export default function ExportPdfScreen({ dog, onClose }: Props) {
                 {periode.label}
               </button>
             ))}
-            <Button type="button" variant="secondary" className="py-2 text-sm" onClick={() => window.print()}>
-              Imprimer / PDF
+            <Button
+              type="button"
+              variant="secondary"
+              className="py-2 text-sm"
+              disabled={genereBusy || entries === null}
+              onClick={() => void telechargerPdf()}
+            >
+              {genereBusy ? 'Génération…' : 'Télécharger le PDF'}
             </Button>
           </div>
         </div>
