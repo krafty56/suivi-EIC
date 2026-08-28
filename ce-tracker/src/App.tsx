@@ -9,7 +9,6 @@ import AuthScreen from './screens/AuthScreen'
 import DogFormScreen from './screens/DogFormScreen'
 import DogHubScreen from './screens/DogHubScreen'
 import SaisirHubScreen from './screens/SaisirHubScreen'
-import ExportPdfScreen from './screens/ExportPdfScreen'
 import FichePreparationScreen from './screens/FichePreparationScreen'
 import HistoryHubScreen from './screens/HistoryHubScreen'
 import LabHubScreen from './screens/LabHubScreen'
@@ -61,6 +60,9 @@ if (premiumRedirect) {
 // Recharts pèse à lui seul plus que tout le reste de l'application. On le charge
 // seulement quand les analyses sont ouvertes, pour que la saisie quotidienne reste rapide.
 const AnalysesScreen = lazy(() => import('./screens/AnalysesScreen'))
+// Charge @react-pdf/renderer (bibliothèque lourde) seulement à l'ouverture
+// de l'export, plutôt que de l'inclure dans le bundle principal.
+const ExportPdfScreen = lazy(() => import('./screens/ExportPdfScreen'))
 
 /** Statut d'abonnement, visible en permanence dans l'en-tête. À part plutôt
  * qu'appelé directement dans App : usePremium ne doit se monter qu'une fois
@@ -109,9 +111,15 @@ function AppShell({
   const [premiumOuvert, setPremiumOuvert] = useState(false)
   const [messagePremium, setMessagePremium] = useState(premiumRedirect)
 
-  // Rendu hors coquille (pas de hauteur fixe, pas de scroll interne) : sinon
-  // window.print() ne sort que la portion actuellement visible à l'écran.
-  if (exportOuvert) return <ExportPdfScreen dog={dog} onClose={() => setExportOuvert(false)} />
+  // Rendu hors coquille (pas de hauteur fixe, pas de scroll interne) : c'est
+  // un écran plein, pas une feuille modale.
+  if (exportOuvert) {
+    return (
+      <Suspense fallback={<Spinner label="Chargement de l’export…" />}>
+        <ExportPdfScreen dog={dog} onClose={() => setExportOuvert(false)} />
+      </Suspense>
+    )
+  }
   if (fichePrep) {
     return <FichePreparationScreen dog={dog} appointment={fichePrep} onClose={() => setFichePrep(null)} />
   }
