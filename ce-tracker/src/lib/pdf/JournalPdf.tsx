@@ -3,23 +3,9 @@ import type { Dog, DogMedication, FoodEntry, SuiviEvent } from '../types'
 import { BCS_SCALE, CHANGEMENT_OPTIONS } from '../../data/catalogs'
 import { calculerAge, formatLongDate, formatPlageAbsence, formatShortDate, formatTime, veilleDe } from '../date'
 import { texteLigne, type Jour } from '../journal'
+import { COULEURS_PDF } from './couleursPdf'
 
-const COULEURS = {
-  encre: '#0D1821',
-  brand700: '#344966',
-  brand200: '#BFCC94',
-  brandPoudre: '#B4CDED',
-  rouge: '#A8443D',
-  rougeFond: '#F8ECE9',
-  rougeTexte: '#702C26',
-  ambre: '#855520',
-  ambreFond: '#F6E8CE',
-  slate100: '#F1F1F2',
-  slate200: '#E3E4E6',
-  slate400: '#999EA2',
-  slate500: '#6E747A',
-  slate600: '#5A6268',
-}
+const COULEURS = COULEURS_PDF
 
 const BARRE_GRAVITE: Record<Jour['gravite'], string> = {
   rouge: COULEURS.rouge,

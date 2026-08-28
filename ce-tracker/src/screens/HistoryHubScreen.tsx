@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import type { Dog } from '../lib/types'
 import { usePremium } from '../lib/premium'
-import { Sheet } from '../components/ui'
+import { Sheet, Spinner } from '../components/ui'
 import { Verrou } from '../components/Verrou'
 import HistoryScreen from './HistoryScreen'
-import PhotosScreen from './PhotosScreen'
 import ScoresScreen from './ScoresScreen'
+
+// @react-pdf/renderer pèse lourd : chargé seulement à l'ouverture de l'onglet
+// Photos (export PDF de la galerie), comme pour les analyses et le labo.
+const PhotosScreen = lazy(() => import('./PhotosScreen'))
 
 type Vue = 'journal' | 'scores' | 'photos'
 
@@ -54,7 +57,11 @@ export default function HistoryHubScreen({ dog, onExport }: Props) {
 
       {vue === 'journal' && <HistoryScreen dogId={dog.id} />}
       {vue === 'scores' && <ScoresScreen dogId={dog.id} />}
-      {vue === 'photos' && <PhotosScreen dogId={dog.id} />}
+      {vue === 'photos' && (
+        <Suspense fallback={<Spinner />}>
+          <PhotosScreen dog={dog} />
+        </Suspense>
+      )}
 
       {verrouOuvert && (
         <Sheet title="PDF vétérinaire" onClose={() => setVerrouOuvert(false)}>
