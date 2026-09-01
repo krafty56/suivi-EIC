@@ -123,3 +123,13 @@ export function datetimeLocalDe(at: string): string {
 export function isoDeDatetimeLocal(value: string): string {
   return new Date(value).toISOString()
 }
+
+/** Valeur locale pour un input datetime-local, à partir d'une Date dont les
+ * champs (année, mois, jour, heure…) sont déjà la bonne heure locale — le
+ * cas d'une date EXIF (DateTimeOriginal), qui n'a pas de fuseau et se lit
+ * telle quelle. Contrairement à datetimeLocalDe, aucune conversion de fuseau
+ * n'est appliquée : lire les champs locaux du Date suffit. */
+export function datetimeLocalDeDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}

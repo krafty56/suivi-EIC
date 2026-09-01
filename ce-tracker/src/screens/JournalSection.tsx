@@ -14,7 +14,7 @@ import {
 } from '../data/catalogs'
 import { LABEL_TYPE_EVENEMENT } from '../data/events'
 import { emojiEvenement } from '../data/emoji'
-import { datetimeLocalDe, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
+import { datetimeLocalDe, datetimeLocalDeDate, heureDe, horodatage, isoDeDatetimeLocal } from '../lib/date'
 import { usePremium } from '../lib/premium'
 import { STOOL_BUCKET, stoolPhotoUrl } from '../lib/storage'
 import { Button, Card, ErrorMessage, Field, Sheet, SegmentedControl, inputClass } from '../components/ui'
@@ -55,6 +55,26 @@ function redimensionnerPourAnalyse(fichier: File): Promise<{ base64: string; med
     }
     image.src = url
   })
+}
+
+/** Date et heure de prise de vue lues dans les métadonnées EXIF de la photo,
+ * pour préremplir « Quand ? » sans ressaisie quand la photo vient de la
+ * pellicule plutôt que d'être prise à l'instant. exifr est chargé à la
+ * demande (jamais utilisé, pas de raison d'alourdir le bundle principal
+ * pour tout le monde) ; une photo sans EXIF (capture d'écran, export
+ * d'une appli de retouche…) ou dont la lecture échoue renvoie simplement
+ * null, sans bloquer la saisie. */
+async function lireDateExif(fichier: File): Promise<Date | null> {
+  try {
+    const { parse } = await import('exifr')
+    const tags = (await parse(fichier, { pick: ['DateTimeOriginal', 'CreateDate'] })) as
+      | { DateTimeOriginal?: Date; CreateDate?: Date }
+      | undefined
+    const date = tags?.DateTimeOriginal ?? tags?.CreateDate
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null
+  } catch {
+    return null
+  }
 }
 
 /** Repas et selles ne viennent pas du catalogue de symptômes. */
@@ -475,6 +495,7 @@ function AjoutSheet({
   const [photoSupprimee, setPhotoSupprimee] = useState(false)
   const [busyPhoto, setBusyPhoto] = useState(false)
   const [erreurPhoto, setErreurPhoto] = useState<string | null>(null)
+  const [heureDepuisPhoto, setHeureDepuisPhoto] = useState(false)
   const photoActuelle = evenement?.storage_path ?? null
 
   // Suggestion de score fécal par l'IA (échelle de Purina), à partir de la
@@ -725,10 +746,20 @@ function AjoutSheet({
               type="file"
               accept="image/*"
               onChange={(e) => {
-                setFichierPhoto(e.target.files?.[0] ?? null)
+                const fichier = e.target.files?.[0] ?? null
+                setFichierPhoto(fichier)
                 setPhotoSupprimee(false)
                 setAnalyseIA(null)
                 setErreurAnalyse(null)
+                setHeureDepuisPhoto(false)
+                if (fichier) {
+                  void lireDateExif(fichier).then((dateExif) => {
+                    if (!dateExif) return
+                    const valeur = datetimeLocalDeDate(dateExif)
+                    setQuand(valeur > maintenant ? maintenant : valeur)
+                    setHeureDepuisPhoto(true)
+                  })
+                }
               }}
               className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-800"
             />
@@ -740,6 +771,7 @@ function AjoutSheet({
                   setPhotoSupprimee(true)
                   setAnalyseIA(null)
                   setErreurAnalyse(null)
+                  setHeureDepuisPhoto(false)
                 }}
                 className="mt-2 text-sm font-medium text-red-700 underline"
               >
@@ -930,12 +962,18 @@ function AjoutSheet({
           </Sheet>
         )}
 
-        <Field label="Quand ?">
+        <Field
+          label="Quand ?"
+          hint={heureDepuisPhoto ? 'Reprise de la date de la photo — modifiable' : undefined}
+        >
           <input
             type="datetime-local"
             value={quand}
             max={maintenant}
-            onChange={(e) => setQuand(e.target.value)}
+            onChange={(e) => {
+              setQuand(e.target.value)
+              setHeureDepuisPhoto(false)
+            }}
             className={inputClass}
           />
         </Field>
