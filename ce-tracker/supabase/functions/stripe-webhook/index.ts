@@ -7,10 +7,17 @@
 // Stripe (customer), d'où le besoin de retrouver la ligne par
 // stripe_customer_id plutôt que par owner_id.
 //
+// Le compte Stripe encaisse aussi d'autres sites (La Cantine d'Owen, Cap EIC…)
+// et Stripe envoie chaque paiement à tous les webhooks du compte. On ne traite
+// donc que les sessions qui contiennent un prix AppEIC ; les autres reçoivent
+// un simple 200, pour que Stripe ne les renvoie pas en boucle.
+//
 // Secrets requis (Dashboard > Edge Functions > stripe-webhook > Secrets) :
 //   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET (Stripe > Developers > Webhooks
 //   > Signing secret). SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont déjà
-//   fournis automatiquement.
+//   fournis automatiquement. STRIPE_PRICE_MONTHLY, STRIPE_PRICE_ANNUAL et
+//   STRIPE_PRICE_LIFETIME (déjà posés pour create-checkout-session) servent
+//   à reconnaître les paiements AppEIC.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Stripe from 'npm:stripe@17'
@@ -18,6 +25,20 @@ import Stripe from 'npm:stripe@17'
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!)
 const WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+const PRIX_APPEIC = new Set(
+  ['STRIPE_PRICE_MONTHLY', 'STRIPE_PRICE_ANNUAL', 'STRIPE_PRICE_LIFETIME']
+    .map((nom) => Deno.env.get(nom))
+    .filter((id): id is string => Boolean(id)),
+)
+
+async function estUnAchatAppEIC(session: Stripe.Checkout.Session): Promise<boolean> {
+  // Sans la liste des prix, on garde l'ancien comportement plutôt que de
+  // risquer d'ignorer de vrais achats premium.
+  if (PRIX_APPEIC.size === 0) return true
+  const { data } = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 })
+  return data.some((ligne) => ligne.price != null && PRIX_APPEIC.has(ligne.price.id))
+}
 
 Deno.serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature')
@@ -35,6 +56,7 @@ Deno.serve(async (req) => {
       const session = event.data.object as Stripe.Checkout.Session
       const ownerId = session.client_reference_id
       if (!ownerId) break
+      if (!(await estUnAchatAppEIC(session))) break
       const estAVie = session.mode === 'payment'
       const { error } = await supabase.from('premium_status').upsert({
         owner_id: ownerId,
@@ -46,6 +68,12 @@ Deno.serve(async (req) => {
         stripe_customer_id: session.customer as string,
         updated_at: new Date().toISOString(),
       })
+      // 23503 : utilisateur inconnu ici. Le réessayer ne changerait rien,
+      // on le signale dans les logs sans faire échouer le webhook.
+      if (error?.code === '23503') {
+        console.warn(`Paiement ${session.id} : utilisateur ${ownerId} inconnu, ignoré`)
+        break
+      }
       if (error) return new Response(error.message, { status: 500 })
       break
     }

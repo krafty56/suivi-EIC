@@ -2,3 +2,9 @@
 # « project_id » est un identifiant local, il n'a pas besoin de correspondre
 # à la référence du projet hébergé.
 project_id = "ce-tracker"
+
+# Fonctions mises en service par l'intégration GitHub à chaque merge sur main
+# (option « Deploy to production »). stripe-webhook est appelée par Stripe,
+# sans jeton Supabase : la vérification JWT doit rester désactivée.
+[functions.stripe-webhook]
+verify_jwt = false
